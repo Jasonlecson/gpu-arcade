@@ -1,0 +1,101 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libncurses-dev ocl-icd-opencl-dev opencl-headers
+      - name: Build
+        run: make
+      - name: Rename
+        run: mv gpu_arcade gpu-arcade-linux-x86_64
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gpu-arcade-linux-x86_64
+          path: gpu-arcade-linux-x86_64
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: make
+      - name: Rename
+        run: mv gpu_arcade gpu-arcade-macos-x86_64
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gpu-arcade-macos-x86_64
+          path: gpu-arcade-macos-x86_64
+
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          release: true
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-opencl-icd mingw-w64-x86_64-opencl-headers
+      - name: Build
+        run: make
+      - name: Rename
+        run: mv gpu_arcade.exe gpu-arcade-windows-x86_64.exe
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gpu-arcade-windows-x86_64
+          path: gpu-arcade-windows-x86_64.exe
+
+  release:
+    needs: [build-linux, build-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: GPU Arcade ${{ github.ref_name }}
+          body: |
+            FC-style terminal game collection, all game logic on GPU via OpenCL.
+
+            ### Games
+            1. Snake - classic snake
+            2. Tetris - falling blocks
+            3. Game of Life - cellular automaton
+            4. Pong - paddle ball
+            5. Breakout - brick breaker
+
+            ### Downloads
+            - `gpu-arcade-linux-x86_64` - Linux
+            - `gpu-arcade-macos-x86_64` - macOS
+            - `gpu-arcade-windows-x86_64.exe` - Windows
+
+            ### Requirements
+            - OpenCL runtime (GPU driver)
+            - Terminal with UTF-8 support
+          files: |
+            artifacts/gpu-arcade-linux-x86_64/gpu-arcade-linux-x86_64
+            artifacts/gpu-arcade-macos-x86_64/gpu-arcade-macos-x86_64
+            artifacts/gpu-arcade-windows-x86_64/gpu-arcade-windows-x86_64.exe
+          draft: false
+          prerelease: false
