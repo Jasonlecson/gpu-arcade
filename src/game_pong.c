@@ -95,9 +95,7 @@ int game_pong(gpu_ctx_t *gpu) {
 #else
             refresh();
 #endif
-            nodelay(stdscr, FALSE);
-            getch();
-            nodelay(stdscr, TRUE);
+            term_wait_key();
             break;
         }
     }

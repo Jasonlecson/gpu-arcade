@@ -179,9 +179,7 @@ int game_tetris(gpu_ctx_t *gpu) {
 #else
         refresh();
 #endif
-        nodelay(stdscr, FALSE);
-        getch();
-        nodelay(stdscr, TRUE);
+            term_wait_key();
     }
 
     clReleaseKernel(kern); clReleaseProgram(prog);

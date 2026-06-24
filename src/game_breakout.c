@@ -106,9 +106,7 @@ int game_breakout(gpu_ctx_t *gpu) {
 #else
             refresh();
 #endif
-            nodelay(stdscr, FALSE);
-            getch();
-            nodelay(stdscr, TRUE);
+            term_wait_key();
             break;
         }
 
@@ -120,9 +118,7 @@ int game_breakout(gpu_ctx_t *gpu) {
 #else
             refresh();
 #endif
-            nodelay(stdscr, FALSE);
-            getch();
-            nodelay(stdscr, TRUE);
+            term_wait_key();
             break;
         }
 

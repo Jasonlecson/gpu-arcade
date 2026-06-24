@@ -161,6 +161,8 @@ static int term_kbhit(void) {
     return 0;
 }
 
+static void term_wait_key(void) { term_getch(); }
+
 #else /* ncurses */
 
 static void term_init(void) {
@@ -206,6 +208,7 @@ static void term_clear(void) { erase(); }
 static void term_refresh(void) { refresh(); }
 static int term_getch(void) { return getch(); }
 static int term_kbhit(void) { return 1; } /* ncurses nodelay handles this */
+static void term_wait_key(void) { nodelay(stdscr, FALSE); getch(); nodelay(stdscr, TRUE); }
 
 #endif
 
