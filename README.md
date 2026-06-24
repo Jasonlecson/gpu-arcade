@@ -14,6 +14,10 @@ FC 卡带风格的终端游戏合集，所有游戏逻辑在 GPU 上通过 OpenC
 | 3 | **Game of Life** | 细胞状态更新（每个格子一个 GPU 线程） |
 | 4 | **Pong** | 球的物理运动、碰撞检测 |
 | 5 | **Breakout** | 球的运动、砖块碰撞检测 |
+| 6 | **2048** | 格子滑动合并（并行列扫描） |
+| 7 | **Mandelbrot** | 每像素独立迭代复数（GPU 最佳场景） |
+| 8 | **Falling Sand** | 粒子物理模拟（沙/水/火/石） |
+| 9 | **Raycaster** | 每列射线投射（伪 3D 渲染） |
 
 ## 截图
 
@@ -90,13 +94,17 @@ gpu-arcade/
 ├── main.c                 # 主菜单（FC 风格选择界面）
 ├── src/
 │   ├── common.h           # 共享框架（OpenCL、终端抽象、输入处理）
-│   ├── game_snake.c       # Snake - 蛇身/碰撞/食物全在 GPU
-│   ├── game_tetris.c      # Tetris - GPU 并行消行检测
-│   ├── game_life.c        # Game of Life - 每格子一个 GPU 线程
-│   ├── game_pong.c        # Pong - 球物理在 GPU
-│   └── game_breakout.c    # Breakout - 碰撞在 GPU
-├── Makefile               # 自动检测平台编译
-├── .github/workflows/     # GitHub Actions 三平台自动构建
+│   ├── game_snake.c       # Snake
+│   ├── game_tetris.c      # Tetris
+│   ├── game_life.c        # Game of Life
+│   ├── game_pong.c        # Pong
+│   ├── game_breakout.c    # Breakout
+│   ├── game_2048.c        # 2048
+│   ├── game_mandelbrot.c  # Mandelbrot 分形
+│   ├── game_sand.c        # Falling Sand 粒子模拟
+│   └── game_raycaster.c   # Raycaster 伪 3D
+├── Makefile
+├── .github/workflows/
 ├── LICENSE
 └── README.md
 ```

@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -O2 -Wall -I.
 TARGET = gpu_arcade
 
-SRCS = main.c src/game_snake.c src/game_tetris.c src/game_life.c src/game_pong.c src/game_breakout.c
+SRCS = main.c src/game_snake.c src/game_tetris.c src/game_life.c src/game_pong.c src/game_breakout.c src/game_2048.c src/game_mandelbrot.c src/game_sand.c src/game_raycaster.c
 
 UNAME_S := $(shell uname -s)
 

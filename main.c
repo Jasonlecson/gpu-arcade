@@ -11,6 +11,10 @@ extern int game_tetris(gpu_ctx_t *gpu);
 extern int game_life(gpu_ctx_t *gpu);
 extern int game_pong(gpu_ctx_t *gpu);
 extern int game_breakout(gpu_ctx_t *gpu);
+extern int game_2048(gpu_ctx_t *gpu);
+extern int game_mandelbrot(gpu_ctx_t *gpu);
+extern int game_sand(gpu_ctx_t *gpu);
+extern int game_raycaster(gpu_ctx_t *gpu);
 
 typedef struct {
     const char *name;
@@ -19,11 +23,15 @@ typedef struct {
 } game_entry_t;
 
 static game_entry_t games[] = {
-    { "Snake",     "Classic snake - eat food, grow longer",  game_snake    },
-    { "Tetris",    "Stack falling blocks, clear lines",      game_tetris   },
-    { "Game of Life", "Cellular automaton - watch evolution", game_life     },
-    { "Pong",      "Classic paddle ball game",               game_pong     },
-    { "Breakout",  "Break bricks with a bouncing ball",      game_breakout },
+    { "Snake",       "Classic snake - eat food, grow longer",    game_snake     },
+    { "Tetris",      "Stack falling blocks, clear lines",        game_tetris    },
+    { "Game of Life", "Cellular automaton - watch evolution",    game_life      },
+    { "Pong",        "Classic paddle ball game",                 game_pong      },
+    { "Breakout",    "Break bricks with a bouncing ball",        game_breakout  },
+    { "2048",        "Slide and merge tiles to reach 2048",      game_2048      },
+    { "Mandelbrot",  "Explore the fractal - zoom infinitely",    game_mandelbrot },
+    { "Falling Sand", "Particle sim - sand/water/fire/stone",    game_sand      },
+    { "Raycaster",   "Wolfenstein 3D style 3D rendering",        game_raycaster },
 };
 #define NUM_GAMES (int)(sizeof(games) / sizeof(games[0]))
 
