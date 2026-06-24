@@ -53,7 +53,7 @@ jobs:
           release: true
           install: mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-opencl-icd mingw-w64-x86_64-opencl-headers
       - name: Build
-        run: make
+        run: mingw32-make
       - name: Rename
         run: mv gpu_arcade.exe gpu-arcade-windows-x86_64.exe
       - name: Upload artifact
