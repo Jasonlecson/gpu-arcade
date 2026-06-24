@@ -51,7 +51,7 @@ jobs:
         with:
           msystem: MINGW64
           release: true
-          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-opencl-icd mingw-w64-x86_64-opencl-headers
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-opencl-icd mingw-w64-x86_64-opencl-headers
       - name: Build
         run: make
       - name: Rename
@@ -84,6 +84,10 @@ jobs:
             3. Game of Life - cellular automaton
             4. Pong - paddle ball
             5. Breakout - brick breaker
+            6. 2048 - sliding tiles
+            7. Mandelbrot - fractal explorer
+            8. Falling Sand - particle simulation
+            9. Raycaster - 3D renderer
 
             ### Downloads
             - `gpu-arcade-linux-x86_64` - Linux
