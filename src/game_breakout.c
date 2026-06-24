@@ -16,7 +16,7 @@ static const char *breakout_kernel_src =
 "    bx += dx * spd; by += dy * spd;\n"
 "    if (bx <= 0 || bx >= W - 1) dx = -dx;\n"
 "    if (by <= 0) dy = -dy;\n"
-"    if (by >= BH) { state[0]=bx; state[1]=by; state[2]=dx; state[3]=dy; state[5]=1; return; }\n"
+"    if (by >= H) { state[5]=1; state[0]=bx; state[1]=by; state[2]=dx; state[3]=dy; return; }\n"
 "    int ibx = (int)bx, iby = (int)by;\n"
 "    if (iby >= 0 && iby < BH && ibx >= 0 && ibx < BW) {\n"
 "        int idx = iby * BW + ibx;\n"

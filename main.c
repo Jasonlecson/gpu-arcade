@@ -61,9 +61,11 @@ static int menu(gpu_ctx_t *gpu) {
         term_printf(cy -  9, cx - 20, 3, 1, "| |_| ||  _  ||  _| (__| | (_| (_| | |    ");
         term_printf(cy -  8, cx - 20, 3, 1, " \\____|_|_|_||_|  \\___|_|\\___\\__,_|_|    ");
 
-        /* GPU info */
+        /* GPU info - truncate device name to fit */
+        char short_name[32];
+        snprintf(short_name, sizeof(short_name), "%.30s", gpu->device_name);
         term_printf(cy - 6, cx - 25, 5, 0, " GPU: %s | %s | %d CU @ %d MHz ",
-                    gpu->platform_name, gpu->device_name, gpu->compute_units, gpu->clock_freq);
+                    gpu->platform_name, short_name, gpu->compute_units, gpu->clock_freq);
 
         /* Game list */
         draw_box(cy - 4, cx - 24, NUM_GAMES + 2, 48, 4);
