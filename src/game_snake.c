@@ -52,11 +52,13 @@ static const char *snake_kernel_src =
 "}\n";
 
 int game_snake(gpu_ctx_t *gpu) {
+    FILE *dbg = fopen("gpu_arcade_debug.log", "w"); if(dbg){fprintf(dbg,"1: entered game_snake\n");fflush(dbg);}
     int sw, sh;
     get_terminal_size(&sw, &sh);
     int gw = sw - 2, gh = sh - 6;
     if (gw < 10) gw = 10;
     if (gh < 5) gh = 5;
+    if(dbg){fprintf(dbg,"2: grid=%dx%d\n",gw,gh);fflush(dbg);}
 
     int *grid = calloc(gw * gh, sizeof(int));
     int sy = gh / 2, sx = gw / 2;
@@ -71,24 +73,30 @@ int game_snake(gpu_ctx_t *gpu) {
         grid[fy * gw + fx] = -1;
     }
 
+    if(dbg){fprintf(dbg,"3: creating buffers\n");fflush(dbg);}
     cl_int err;
     cl_mem grid_g = clCreateBuffer(gpu->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, gw*gh*sizeof(int), grid, &err);
+    if(dbg){fprintf(dbg,"4: grid_g err=%d\n",err);fflush(dbg);}
     cl_mem head_g = clCreateBuffer(gpu->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, 2*sizeof(int), head, &err);
     cl_mem dir_g  = clCreateBuffer(gpu->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(int), dir, &err);
     cl_mem len_g  = clCreateBuffer(gpu->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(int), len, &err);
     cl_mem st_g   = clCreateBuffer(gpu->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(int), status, &err);
     cl_mem rng_g  = clCreateBuffer(gpu->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(int), rng, &err);
 
+    if(dbg){fprintf(dbg,"5: building kernel\n");fflush(dbg);}
     cl_program prog = gpu_build(gpu, snake_kernel_src);
+    if(dbg){fprintf(dbg,"6: kernel built OK\n");fflush(dbg);}
     cl_kernel kern = clCreateKernel(prog, "snake_update", &err);
+    if(dbg){fprintf(dbg,"7: kernel created err=%d\n",err);fflush(dbg);}
 
     int fc = 0;
     double sess = now_us();
     double next_logic = now_us();
+    if(dbg){fprintf(dbg,"8: entering loop\n");fflush(dbg);}
 
     while (1) {
         int key = read_key();
-        if (key == 'q' || key == 'Q' || key == 27) break;
+        if (key == 'q' || key == 'Q' || key == 27) { if(dbg)fprintf(dbg,"quit\n"); break; }
         if (key == KEY_UP_ && dir[0] != 1) dir[0] = 0;
         else if (key == KEY_DOWN_ && dir[0] != 0) dir[0] = 1;
         else if (key == KEY_LEFT_ && dir[0] != 3) dir[0] = 2;
@@ -97,6 +105,7 @@ int game_snake(gpu_ctx_t *gpu) {
         double now = now_us();
         if (now >= next_logic && status[0] != 2) {
             next_logic = now + SNAKE_LOGIC_MS * 1000.0;
+            if(dbg && fc==0){fprintf(dbg,"9: first logic\n");fflush(dbg);}
 
             clEnqueueWriteBuffer(gpu->queue, dir_g, CL_TRUE, 0, sizeof(int), dir, 0, NULL, NULL);
             size_t gws = gw * gh;
@@ -139,6 +148,7 @@ int game_snake(gpu_ctx_t *gpu) {
         term_printf(0, 0, 6, 1, " SNAKE | Score:%d Length:%d | Q=Quit ", len[0]-4, len[0]);
         term_printf(gh + 2, 0, 7, 0, " Arrows=Move  Q=Back to Menu | %d FPS ", fc > 0 ? (int)(fc / elapsed) : 0);
         term_refresh();
+        if(dbg && fc==0){fprintf(dbg,"10: first refresh done\n");fflush(dbg);}
 
         if (status[0] == 2) {
             term_printf(gh/2, gw/2 - 4, 2, 1, " GAME OVER! ");
@@ -151,6 +161,7 @@ int game_snake(gpu_ctx_t *gpu) {
         platform_sleep_ms(16);
     }
 
+    if(dbg){fprintf(dbg,"11: exiting loop\n");fclose(dbg);}
     clReleaseKernel(kern);
     clReleaseProgram(prog);
     clReleaseMemObject(grid_g); clReleaseMemObject(head_g);
