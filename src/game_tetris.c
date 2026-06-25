@@ -41,7 +41,7 @@ int game_tetris(gpu_ctx_t *gpu) {
     int piece = rand() % 7, rot = 0, px = TET_W / 2 - 1, py = 0;
     int next_piece = rand() % 7;
     int score = 0, level = 1, lines_cleared = 0;
-    int drop_timer = 0, drop_interval = 500;
+    int drop_timer = 0, drop_interval = 1000;
 
     cl_int err;
     cl_mem board_g = clCreateBuffer(gpu->ctx, CL_MEM_READ_WRITE, TET_W*TET_H*sizeof(int), NULL, &err);
@@ -51,6 +51,8 @@ int game_tetris(gpu_ctx_t *gpu) {
 
     int game_over = 0;
     double last_drop = now_us();
+    int fc = 0;
+    double sess = now_us();
 
     while (!game_over) {
         int key = read_key();
@@ -119,8 +121,8 @@ int game_tetris(gpu_ctx_t *gpu) {
                     lines_cleared += cleared;
                     score += cleared * cleared * 100;
                     level = lines_cleared / 10 + 1;
-                    drop_interval = 500 - (level - 1) * 40;
-                    if (drop_interval < 50) drop_interval = 50;
+                    drop_interval = 1000 - (level - 1) * 60;
+                    if (drop_interval < 150) drop_interval = 150;
                 }
 
                 piece = next_piece;
@@ -164,16 +166,23 @@ int game_tetris(gpu_ctx_t *gpu) {
         term_printf(oy + 7, ox + TET_W * 2 + 2, 4, 0, "Level: %d", level);
         term_printf(oy + 8, ox + TET_W * 2 + 2, 4, 0, "Lines: %d", lines_cleared);
         term_printf(sh - 1, 0, 7, 0, " Arrows=Move Up=Rotate Q=Quit ");
+        draw_metrics(gpu, sh, fc++, sess, 0);
         term_refresh();
 
         platform_sleep_ms(16);
     }
 
     if (game_over) {
+        term_clear();
         term_printf(oy + TET_H/2, ox + TET_W - 4, 2, 1, " GAME OVER! ");
-        term_printf(oy + TET_H/2 + 1, ox + TET_W - 6, 4, 0, " Score: %d ", score);
+        term_printf(oy + TET_H/2 + 1, ox + TET_W - 9, 4, 0, " Score: %d | R=Restart Q=Quit ", score);
         term_refresh();
-            term_wait_key();
+        while (1) {
+            int k = read_key();
+            if (k == 'q' || k == 'Q' || k == 27) break;
+            if (k == 'r' || k == 'R') { free(board); return game_tetris(gpu); }
+            platform_sleep_ms(16);
+        }
     }
 
     clReleaseKernel(kern); clReleaseProgram(prog);

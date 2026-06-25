@@ -44,6 +44,8 @@ int game_pong(gpu_ctx_t *gpu) {
     cl_kernel kern = clCreateKernel(prog, "pong_update", &err);
 
     double next_logic = now_us();
+    int fc = 0;
+    double sess = now_us();
 
     while (1) {
         int key = read_key();
@@ -87,19 +89,33 @@ int game_pong(gpu_ctx_t *gpu) {
 
         term_printf(0, 0, 6, 1, " PONG | %d : %d | You=Left  AI=Right | Q=Quit ", (int)state[6], (int)state[7]);
         term_printf(sh - 1, 0, 7, 0, " Up/Down=Move Paddle ");
+        draw_metrics(gpu, gh, fc++, sess, 0);
         term_refresh();
 
         if ((int)state[6] >= 11 || (int)state[7] >= 11) {
             int winner = (int)state[6] >= 11 ? 1 : 2;
             term_printf(gh/2, gw/2 - 5, 3, 1, " PLAYER %d WINS! ", winner);
+            term_printf(gh/2 + 1, gw/2 - 10, 4, 0, " R=Restart  Q=Quit to Menu ");
             term_refresh();
-            term_wait_key();
-            break;
+            while (1) {
+                int k = read_key();
+                if (k == 'q' || k == 'Q' || k == 27) goto pong_exit;
+                if (k == 'r' || k == 'R') {
+                    state[0] = gw/2.0f; state[1] = gh/2.0f;
+                    state[2] = 1.0f; state[3] = 1.0f;
+                    state[6] = 0; state[7] = 0;
+                    next_logic = now_us();
+                    break;
+                }
+                platform_sleep_ms(16);
+            }
+            if ((int)state[6] >= 11 || (int)state[7] >= 11) break;
         }
 
         platform_sleep_ms(16);
     }
 
+pong_exit:
     clReleaseKernel(kern); clReleaseProgram(prog);
     clReleaseMemObject(st_g);
     return 0;

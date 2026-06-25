@@ -365,4 +365,27 @@ static int read_key(void) {
 #endif
 }
 
+/* ======================== Performance metrics ======================== */
+
+static void draw_metrics(gpu_ctx_t *gpu, int gh, int frame_count, double session_start_us, double kernel_us) {
+    int sw, sh;
+    get_terminal_size(&sw, &sh);
+    int my = sh - (sh - gh) / 2 - 4;
+    if (my <= gh + 1) my = gh + 2;
+
+    double elapsed = (now_us() - session_start_us) / 1e6;
+    double fps = (elapsed > 0 && frame_count > 0) ? frame_count / elapsed : 0;
+
+    char pshort[32], dshort[32];
+    snprintf(pshort, sizeof(pshort), "%.28s", gpu->platform_name);
+    snprintf(dshort, sizeof(dshort), "%.28s", gpu->device_name);
+
+    term_printf(my++, 0, 5, 0, " \xe2\x94\x80\xe2\x94\x80 GPU %s ", pshort);
+    term_printf(my++, 0, 5, 0, "  Device: %s  %s  %dCU @ %dMHz", dshort, gpu->is_gpu ? "GPU" : "CPU", gpu->compute_units, gpu->clock_freq);
+    term_printf(my++, 0, 5, 0, "  Frames: %d  FPS: %.1f  Frame: %.1fms",
+                frame_count, fps, fps > 0 ? 1000.0 / fps : 0);
+    if (kernel_us > 0)
+        term_printf(my++, 0, 5, 0, "  Kernel: %.0f us  GPU threads: active", kernel_us);
+}
+
 #endif /* GPU_ARCADE_COMMON_H */

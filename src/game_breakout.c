@@ -59,6 +59,8 @@ int game_breakout(gpu_ctx_t *gpu) {
     cl_kernel kern = clCreateKernel(prog, "breakout_update", &err);
 
     double next_logic = now_us();
+    int fc = 0;
+    double sess = now_us();
 
     while (1) {
         int key = read_key();
@@ -100,28 +102,57 @@ int game_breakout(gpu_ctx_t *gpu) {
 
         term_printf(0, 0, 6, 1, " BREAKOUT | Score: %d | Q=Quit ", (int)state[6]);
         term_printf(sh - 1, 0, 7, 0, " Left/Right=Move Paddle ");
+        draw_metrics(gpu, gh, fc++, sess, 0);
         term_refresh();
 
         if (state[5] > 0.5f) {
             term_printf(gh/2, gw/2 - 4, 2, 1, " GAME OVER! ");
-            term_printf(gh/2 + 1, gw/2 - 6, 4, 0, " Score: %d ", (int)state[6]);
+            term_printf(gh/2 + 1, gw/2 - 9, 4, 0, " Score: %d | R=Restart Q=Quit ", (int)state[6]);
             term_refresh();
-            term_wait_key();
-            break;
+            while (1) {
+                int k = read_key();
+                if (k == 'q' || k == 'Q' || k == 27) goto breakout_exit;
+                if (k == 'r' || k == 'R') {
+                    for (int y = 0; y < bh; y++)
+                        for (int x = 0; x < bw; x++)
+                            bricks[y * bw + x] = (y + 1);
+                    float ns[9] = {gw/2.0f, gh-5.0f, 0.7f, -1.0f, 0.6f, 0, 0, gw/2.0f - pw/2.0f, (float)pw};
+                    memcpy(state, ns, sizeof(state));
+                    next_logic = now_us();
+                    break;
+                }
+                platform_sleep_ms(16);
+            }
+            if (state[5] > 0.5f) break;
         }
 
         int remaining = 0;
         for (int i = 0; i < bw * bh; i++) if (bricks[i] > 0) remaining++;
         if (remaining == 0) {
             term_printf(gh/2, gw/2 - 3, 3, 1, " YOU WIN! ");
+            term_printf(gh/2 + 1, gw/2 - 10, 4, 0, " R=Restart  Q=Quit to Menu ");
             term_refresh();
-            term_wait_key();
-            break;
+            while (1) {
+                int k = read_key();
+                if (k == 'q' || k == 'Q' || k == 27) goto breakout_exit;
+                if (k == 'r' || k == 'R') {
+                    for (int y = 0; y < bh; y++)
+                        for (int x = 0; x < bw; x++)
+                            bricks[y * bw + x] = (y + 1);
+                    float ns[9] = {gw/2.0f, gh-5.0f, 0.7f, -1.0f, 0.6f, 0, 0, gw/2.0f - pw/2.0f, (float)pw};
+                    memcpy(state, ns, sizeof(state));
+                    next_logic = now_us();
+                    break;
+                }
+                platform_sleep_ms(16);
+            }
+            if (remaining == 0) break;
         }
 
         platform_sleep_ms(16);
     }
 
+breakout_exit:
     clReleaseKernel(kern); clReleaseProgram(prog);
     clReleaseMemObject(bk_g); clReleaseMemObject(st_g);
     free(bricks);

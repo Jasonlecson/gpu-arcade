@@ -46,7 +46,9 @@ int game_life(gpu_ctx_t *gpu) {
     cl_kernel kern = clCreateKernel(prog, "life_step", &err);
 
     int gen = 0, paused = 0, use_a = 1;
+    int fc = 0;
     double next_logic = now_us();
+    double sess = now_us();
 
     while (1) {
         int key = read_key();
@@ -93,6 +95,7 @@ int game_life(gpu_ctx_t *gpu) {
         term_printf(0, 0, 6, 1, " GAME OF LIFE | Gen: %d | %s | Q=Quit R=Reset Space=Pause ",
                     gen, paused ? "PAUSED" : "RUNNING");
         term_printf(gh + 2, 0, 5, 0, " Grid: %dx%d | %d threads on GPU ", gw, gh, gw * gh);
+        draw_metrics(gpu, gh, fc++, sess, 0);
         term_refresh();
 
         platform_sleep_ms(16);

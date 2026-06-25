@@ -85,6 +85,8 @@ int game_raycaster(gpu_ctx_t *gpu) {
     cl_kernel kern = clCreateKernel(prog, "raycast", &err);
 
     double next_logic = now_us();
+    int fc = 0;
+    double sess = now_us();
 
     while (1) {
         int key = read_key();
@@ -141,6 +143,7 @@ int game_raycaster(gpu_ctx_t *gpu) {
         term_printf(0, 0, 6, 1, " RAYCASTER | Pos(%.1f,%.1f) Angle:%.0f | %dx%d GPU ",
                     px, py, pa*180/3.14159f, gw, gh);
         term_printf(gh+2, 0, 7, 0, " Arrows=Move/Turn  Q=Quit ");
+        draw_metrics(gpu, gh, fc++, sess, 0);
         term_refresh();
 
         platform_sleep_ms(16);

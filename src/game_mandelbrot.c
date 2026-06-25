@@ -42,6 +42,8 @@ int game_mandelbrot(gpu_ctx_t *gpu) {
     cl_kernel kern = clCreateKernel(prog, "mandel_render", &err);
 
     int dirty = 1;
+    int fc = 0;
+    double sess = now_us();
 
     while (1) {
         int key = read_key();
@@ -87,6 +89,7 @@ int game_mandelbrot(gpu_ctx_t *gpu) {
         term_printf(0, 0, 6, 1, " MANDELBROT | Zoom: %.1fx | Iter: %d | (%.4f, %.4f) ",
                     zoom, max_iter, cx, cy);
         term_printf(gh + 2, 0, 7, 0, " Arrows=Pan +/-=Zoom I=Iter R=Reset Q=Quit | %dx%d GPU ", gw, gh);
+        draw_metrics(gpu, gh, fc++, sess, 0);
         term_refresh();
 
         platform_sleep_ms(16);

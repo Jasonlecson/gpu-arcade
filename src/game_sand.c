@@ -44,7 +44,8 @@ static const char *sand_kernel_src =
 "        if (y-1 >= 0 && in[(y-1)*W+x] == 0) { out[id] = 0; out[(y-1)*W+x] = 4; return; }\n"
 "        int d = rand_dir;\n"
 "        if (x+d >= 0 && x+d < W && in[y*W+x+d] == 0) { out[id] = 0; out[y*W+x+d] = 4; return; }\n"
-"        if (r % 100 < 5) { out[id] = 0; return; }\n"
+"        if (r % 100 < 15) { out[id] = 0; return; }\n"
+"        if (y == 0) { out[id] = 0; return; }\n"
 "    }\n"
 "}\n";
 
@@ -66,6 +67,7 @@ int game_sand(gpu_ctx_t *gpu) {
     }
 
     int brush = SAND, use_a = 1;
+    int cx = gw / 2, cy = gh / 2;
 
     cl_int err;
     cl_mem ga = clCreateBuffer(gpu->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, gw*gh*sizeof(int), grid_a, &err);
@@ -76,6 +78,8 @@ int game_sand(gpu_ctx_t *gpu) {
 
     int *display = grid_a;
     double next_logic = now_us();
+    int fc = 0;
+    double sess = now_us();
 
     while (1) {
         int key = read_key();
@@ -86,11 +90,17 @@ int game_sand(gpu_ctx_t *gpu) {
         if (key == '4') brush = FIRE;
         if (key == 'c' || key == 'C') {
             memset(grid_a, 0, gw*gh*sizeof(int));
+            memset(grid_b, 0, gw*gh*sizeof(int));
             clEnqueueWriteBuffer(gpu->queue, ga, CL_TRUE, 0, gw*gh*sizeof(int), grid_a, 0, NULL, NULL);
+            clEnqueueWriteBuffer(gpu->queue, gb, CL_TRUE, 0, gw*gh*sizeof(int), grid_b, 0, NULL, NULL);
         }
 
+        if (key == KEY_UP_ && cy > 0) cy--;
+        if (key == KEY_DOWN_ && cy < gh - 1) cy++;
+        if (key == KEY_LEFT_ && cx > 0) cx--;
+        if (key == KEY_RIGHT_ && cx < gw - 1) cx++;
+
         if (key == ' ') {
-            int cx = gw/2, cy = gh/2;
             for (int dy = -2; dy <= 2; dy++)
                 for (int dx = -2; dx <= 2; dx++) {
                     int px = cx+dx, py = cy+dy;
@@ -139,8 +149,14 @@ int game_sand(gpu_ctx_t *gpu) {
         if (brush == WATER) brush_name = "Water";
         if (brush == STONE) brush_name = "Stone";
         if (brush == FIRE) brush_name = "Fire";
-        term_printf(0, 0, 6, 1, " FALLING SAND | Brush: %s | 1-4=Select C=Clear Q=Quit ", brush_name);
-        term_printf(gh+2, 0, 7, 0, " 1=Sand 2=Water 3=Stone 4=Fire  Space=Place  C=Clear ");
+        term_printf(0, 0, 6, 1, " FALLING SAND | Brush: %s | Cursor(%d,%d) | Q=Quit ", brush_name, cx, cy);
+        term_printf(gh+2, 0, 7, 0, " Arrows=Move  Space=Place  1-4=Select  C=Clear  Q=Quit ");
+
+        /* Draw cursor */
+        if (cy >= 0 && cy < gh && cx >= 0 && cx < gw)
+            term_printf(cy+1, cx+1, 3, 1, "+");
+
+        draw_metrics(gpu, gh, fc++, sess, 0);
         term_refresh();
 
         platform_sleep_ms(16);
