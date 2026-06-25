@@ -107,7 +107,9 @@ int game_snake(gpu_ctx_t *gpu) {
             next_logic = now + SNAKE_LOGIC_MS * 1000.0;
             if(dbg && fc==0){fprintf(dbg,"9: first logic\n");fflush(dbg);}
 
+            if(dbg && fc==0){fprintf(dbg,"9a: WriteBuffer dir\n");fflush(dbg);}
             clEnqueueWriteBuffer(gpu->queue, dir_g, CL_TRUE, 0, sizeof(int), dir, 0, NULL, NULL);
+            if(dbg && fc==0){fprintf(dbg,"9b: WriteBuffer done\n");fflush(dbg);}
             size_t gws = gw * gh;
             clSetKernelArg(kern, 0, sizeof(cl_mem), &grid_g);
             clSetKernelArg(kern, 1, sizeof(cl_mem), &head_g);
@@ -118,14 +120,18 @@ int game_snake(gpu_ctx_t *gpu) {
             clSetKernelArg(kern, 6, sizeof(int), &gw);
             clSetKernelArg(kern, 7, sizeof(int), &gh);
             cl_event ev;
+            if(dbg && fc==0){fprintf(dbg,"9c: NDRange\n");fflush(dbg);}
             clEnqueueNDRangeKernel(gpu->queue, kern, 1, NULL, &gws, NULL, 0, NULL, &ev);
+            if(dbg && fc==0){fprintf(dbg,"9d: clFinish\n");fflush(dbg);}
             clFinish(gpu->queue);
+            if(dbg && fc==0){fprintf(dbg,"9e: clFinish done\n");fflush(dbg);}
 
             clEnqueueReadBuffer(gpu->queue, head_g, CL_TRUE, 0, 2*sizeof(int), head, 0, NULL, NULL);
             clEnqueueReadBuffer(gpu->queue, st_g, CL_TRUE, 0, sizeof(int), status, 0, NULL, NULL);
             clEnqueueReadBuffer(gpu->queue, len_g, CL_TRUE, 0, sizeof(int), len, 0, NULL, NULL);
             clEnqueueReadBuffer(gpu->queue, grid_g, CL_TRUE, 0, gw*gh*sizeof(int), grid, 0, NULL, NULL);
             clReleaseEvent(ev);
+            if(dbg && fc==0){fprintf(dbg,"9f: all reads done\n");fflush(dbg);}
             fc++;
         }
 

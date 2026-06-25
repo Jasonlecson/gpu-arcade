@@ -126,7 +126,12 @@ static void term_refresh(void) {
     COORD buf_sz = {(SHORT)g_fb_w, (SHORT)g_fb_h};
     COORD buf_org = {0, 0};
     SMALL_RECT rc = {0, 0, (SHORT)(g_fb_w - 1), (SHORT)(g_fb_h - 1)};
-    WriteConsoleOutputW(hCon, g_fb, buf_sz, buf_org, &rc);
+    static int rfc = 0;
+    FILE *rf = fopen("gpu_arcade_refresh.log", rfc ? "a" : "w");
+    if (rf) { fprintf(rf, "refresh #%d: %dx%d\n", rfc, g_fb_w, g_fb_h); fflush(rf); }
+    BOOL ok = WriteConsoleOutputW(hCon, g_fb, buf_sz, buf_org, &rc);
+    if (rf) { fprintf(rf, "refresh result: %d, lasterr=%lu\n", ok, GetLastError()); fclose(rf); }
+    rfc++;
 }
 
 static void term_puts(int y, int x, const char *s, int color, int bold) {
