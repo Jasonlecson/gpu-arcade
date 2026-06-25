@@ -1,10 +1,12 @@
 /*
  * Snake - Classic snake game, all logic on GPU
+ * Logic: 80ms per step | Render: 60 FPS
  */
 
 #include "src/common.h"
 
 #define SNAKE_FOOD 5
+#define SNAKE_LOGIC_MS 80
 
 static const char *snake_kernel_src =
 "__kernel void snake_update(\n"
@@ -82,6 +84,7 @@ int game_snake(gpu_ctx_t *gpu) {
 
     int fc = 0;
     double sess = now_us();
+    double next_logic = now_us();
 
     while (1) {
         int key = read_key();
@@ -91,32 +94,31 @@ int game_snake(gpu_ctx_t *gpu) {
         else if (key == KEY_LEFT_ && dir[0] != 3) dir[0] = 2;
         else if (key == KEY_RIGHT_ && dir[0] != 2) dir[0] = 3;
 
-        clEnqueueWriteBuffer(gpu->queue, dir_g, CL_TRUE, 0, sizeof(int), dir, 0, NULL, NULL);
+        double now = now_us();
+        if (now >= next_logic && status[0] != 2) {
+            next_logic = now + SNAKE_LOGIC_MS * 1000.0;
 
-        size_t gws = gw * gh;
-        clSetKernelArg(kern, 0, sizeof(cl_mem), &grid_g);
-        clSetKernelArg(kern, 1, sizeof(cl_mem), &head_g);
-        clSetKernelArg(kern, 2, sizeof(cl_mem), &dir_g);
-        clSetKernelArg(kern, 3, sizeof(cl_mem), &len_g);
-        clSetKernelArg(kern, 4, sizeof(cl_mem), &st_g);
-        clSetKernelArg(kern, 5, sizeof(cl_mem), &rng_g);
-        clSetKernelArg(kern, 6, sizeof(int), &gw);
-        clSetKernelArg(kern, 7, sizeof(int), &gh);
-        cl_event ev;
-        clEnqueueNDRangeKernel(gpu->queue, kern, 1, NULL, &gws, NULL, 0, NULL, &ev);
-        clFinish(gpu->queue);
+            clEnqueueWriteBuffer(gpu->queue, dir_g, CL_TRUE, 0, sizeof(int), dir, 0, NULL, NULL);
+            size_t gws = gw * gh;
+            clSetKernelArg(kern, 0, sizeof(cl_mem), &grid_g);
+            clSetKernelArg(kern, 1, sizeof(cl_mem), &head_g);
+            clSetKernelArg(kern, 2, sizeof(cl_mem), &dir_g);
+            clSetKernelArg(kern, 3, sizeof(cl_mem), &len_g);
+            clSetKernelArg(kern, 4, sizeof(cl_mem), &st_g);
+            clSetKernelArg(kern, 5, sizeof(cl_mem), &rng_g);
+            clSetKernelArg(kern, 6, sizeof(int), &gw);
+            clSetKernelArg(kern, 7, sizeof(int), &gh);
+            cl_event ev;
+            clEnqueueNDRangeKernel(gpu->queue, kern, 1, NULL, &gws, NULL, 0, NULL, &ev);
+            clFinish(gpu->queue);
 
-        clEnqueueReadBuffer(gpu->queue, head_g, CL_TRUE, 0, 2*sizeof(int), head, 0, NULL, NULL);
-        clEnqueueReadBuffer(gpu->queue, st_g, CL_TRUE, 0, sizeof(int), status, 0, NULL, NULL);
-        clEnqueueReadBuffer(gpu->queue, len_g, CL_TRUE, 0, sizeof(int), len, 0, NULL, NULL);
-        clEnqueueReadBuffer(gpu->queue, grid_g, CL_TRUE, 0, gw*gh*sizeof(int), grid, 0, NULL, NULL);
-
-        cl_ulong ps, pt, pe;
-        clGetEventProfilingInfo(ev, CL_PROFILING_COMMAND_SUBMIT, sizeof(ps), &ps, NULL);
-        clGetEventProfilingInfo(ev, CL_PROFILING_COMMAND_START, sizeof(pt), &pt, NULL);
-        clGetEventProfilingInfo(ev, CL_PROFILING_COMMAND_END, sizeof(pe), &pe, NULL);
-        clReleaseEvent(ev);
-        fc++;
+            clEnqueueReadBuffer(gpu->queue, head_g, CL_TRUE, 0, 2*sizeof(int), head, 0, NULL, NULL);
+            clEnqueueReadBuffer(gpu->queue, st_g, CL_TRUE, 0, sizeof(int), status, 0, NULL, NULL);
+            clEnqueueReadBuffer(gpu->queue, len_g, CL_TRUE, 0, sizeof(int), len, 0, NULL, NULL);
+            clEnqueueReadBuffer(gpu->queue, grid_g, CL_TRUE, 0, gw*gh*sizeof(int), grid, 0, NULL, NULL);
+            clReleaseEvent(ev);
+            fc++;
+        }
 
         double elapsed = (now_us() - sess) / 1e6;
 
@@ -134,8 +136,8 @@ int game_snake(gpu_ctx_t *gpu) {
                     term_printf(y + 1, x + 1, 7, 0, ".");
             }
         }
-        term_printf(0, 0, 6, 1, " SNAKE | Score:%d Length:%d | GPU:%.0f us | Q=Quit ", len[0]-4, len[0], (pe-pt)/1e3);
-        term_printf(gh + 2, 0, 7, 0, " Arrows=Move  Q=Back to Menu | %d FPS ", (int)(fc / elapsed));
+        term_printf(0, 0, 6, 1, " SNAKE | Score:%d Length:%d | Q=Quit ", len[0]-4, len[0]);
+        term_printf(gh + 2, 0, 7, 0, " Arrows=Move  Q=Back to Menu | %d FPS ", fc > 0 ? (int)(fc / elapsed) : 0);
         term_refresh();
 
         if (status[0] == 2) {
@@ -146,7 +148,7 @@ int game_snake(gpu_ctx_t *gpu) {
             break;
         }
 
-        platform_sleep_ms(80);
+        platform_sleep_ms(16);
     }
 
     clReleaseKernel(kern);

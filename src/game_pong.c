@@ -1,8 +1,11 @@
 /*
  * Pong - Classic paddle ball game, physics on GPU
+ * Logic: 30ms per step | Render: 60 FPS
  */
 
 #include "src/common.h"
+
+#define PONG_LOGIC_MS 30
 
 static const char *pong_kernel_src =
 "__kernel void pong_update(\n"
@@ -40,50 +43,51 @@ int game_pong(gpu_ctx_t *gpu) {
     cl_program prog = gpu_build(gpu, pong_kernel_src);
     cl_kernel kern = clCreateKernel(prog, "pong_update", &err);
 
+    double next_logic = now_us();
+
     while (1) {
         int key = read_key();
         if (key == 'q' || key == 'Q' || key == 27) break;
         if (key == KEY_UP_ && state[4] > 0) state[4] -= 1.5f;
         if (key == KEY_DOWN_ && state[4] < gh - pw) state[4] += 1.5f;
 
-        /* Simple AI for player 2 */
         float target = state[1] - pw / 2.0f;
         if (state[5] < target && state[5] < gh - pw) state[5] += 0.8f;
         if (state[5] > target && state[5] > 0) state[5] -= 0.8f;
 
-        clEnqueueWriteBuffer(gpu->queue, st_g, CL_TRUE, 0, sizeof(state), state, 0, NULL, NULL);
-        size_t gws = 1;
-        clSetKernelArg(kern, 0, sizeof(cl_mem), &st_g);
-        clSetKernelArg(kern, 1, sizeof(int), &gw);
-        clSetKernelArg(kern, 2, sizeof(int), &gh);
-        clEnqueueNDRangeKernel(gpu->queue, kern, 1, NULL, &gws, NULL, 0, NULL, NULL);
-        clFinish(gpu->queue);
-        clEnqueueReadBuffer(gpu->queue, st_g, CL_TRUE, 0, sizeof(state), state, 0, NULL, NULL);
+        double now = now_us();
+        if (now >= next_logic) {
+            next_logic = now + PONG_LOGIC_MS * 1000.0;
+
+            clEnqueueWriteBuffer(gpu->queue, st_g, CL_TRUE, 0, sizeof(state), state, 0, NULL, NULL);
+            size_t gws = 1;
+            clSetKernelArg(kern, 0, sizeof(cl_mem), &st_g);
+            clSetKernelArg(kern, 1, sizeof(int), &gw);
+            clSetKernelArg(kern, 2, sizeof(int), &gh);
+            clEnqueueNDRangeKernel(gpu->queue, kern, 1, NULL, &gws, NULL, 0, NULL, NULL);
+            clFinish(gpu->queue);
+            clEnqueueReadBuffer(gpu->queue, st_g, CL_TRUE, 0, sizeof(state), state, 0, NULL, NULL);
+        }
 
         int bx = (int)state[0], by = (int)state[1];
         int p1 = (int)state[4], p2 = (int)state[5];
 
         term_clear();
-        /* Court */
         for (int y = 0; y < gh; y++) {
             term_printf(y + 1, 0, 7, 0, "|");
             term_printf(y + 1, gw + 1, 7, 0, "|");
             if (y % 3 == 0) term_printf(y + 1, gw / 2 + 1, 7, 0, ":");
         }
-        /* Paddles */
         for (int i = 0; i < pw; i++) {
             if (p1 + i >= 0 && p1 + i < gh) term_printf(p1 + i + 1, 1, 5, 1, "#");
             if (p2 + i >= 0 && p2 + i < gh) term_printf(p2 + i + 1, gw, 5, 1, "#");
         }
-        /* Ball */
         if (by >= 0 && by < gh && bx >= 0 && bx < gw)
             term_printf(by + 1, bx + 1, 3, 1, "O");
 
         term_printf(0, 0, 6, 1, " PONG | %d : %d | You=Left  AI=Right | Q=Quit ", (int)state[6], (int)state[7]);
         term_printf(sh - 1, 0, 7, 0, " Up/Down=Move Paddle ");
         term_refresh();
-
-        platform_sleep_ms(30);
 
         if ((int)state[6] >= 11 || (int)state[7] >= 11) {
             int winner = (int)state[6] >= 11 ? 1 : 2;
@@ -92,6 +96,8 @@ int game_pong(gpu_ctx_t *gpu) {
             term_wait_key();
             break;
         }
+
+        platform_sleep_ms(16);
     }
 
     clReleaseKernel(kern); clReleaseProgram(prog);

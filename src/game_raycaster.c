@@ -1,9 +1,12 @@
 /*
  * Raycaster - Wolfenstein 3D-style raycasting, every column on GPU
+ * Logic: 30ms per step | Render: 60 FPS
  */
 
 #include "src/common.h"
 #include <math.h>
+
+#define RAY_LOGIC_MS 30
 
 static const char *ray_kernel_src =
 "__kernel void raycast(\n"
@@ -81,6 +84,8 @@ int game_raycaster(gpu_ctx_t *gpu) {
     cl_program prog = gpu_build(gpu, ray_kernel_src);
     cl_kernel kern = clCreateKernel(prog, "raycast", &err);
 
+    double next_logic = now_us();
+
     while (1) {
         int key = read_key();
         if (key == 'q' || key == 'Q' || key == 27) break;
@@ -91,25 +96,29 @@ int game_raycaster(gpu_ctx_t *gpu) {
         if (key == KEY_LEFT_) pa -= rot_spd;
         if (key == KEY_RIGHT_) pa += rot_spd;
 
-        /* Collision */
         if (map[(int)py * mw + (int)px] > 0) {
             px -= cos(pa)*move_spd; py -= sin(pa)*move_spd;
         }
 
-        size_t gws = gw;
-        int iw = gw, ih = gh, imw = mw, imh = mh;
-        clSetKernelArg(kern, 0, sizeof(cl_mem), &scr_g);
-        clSetKernelArg(kern, 1, sizeof(cl_mem), &map_g);
-        clSetKernelArg(kern, 2, sizeof(float), &px);
-        clSetKernelArg(kern, 3, sizeof(float), &py);
-        clSetKernelArg(kern, 4, sizeof(float), &pa);
-        clSetKernelArg(kern, 5, sizeof(int), &iw);
-        clSetKernelArg(kern, 6, sizeof(int), &ih);
-        clSetKernelArg(kern, 7, sizeof(int), &imw);
-        clSetKernelArg(kern, 8, sizeof(int), &imh);
-        clEnqueueNDRangeKernel(gpu->queue, kern, 1, NULL, &gws, NULL, 0, NULL, NULL);
-        clFinish(gpu->queue);
-        clEnqueueReadBuffer(gpu->queue, scr_g, CL_TRUE, 0, gw*gh*sizeof(int), screen, 0, NULL, NULL);
+        double now = now_us();
+        if (now >= next_logic) {
+            next_logic = now + RAY_LOGIC_MS * 1000.0;
+
+            size_t gws = gw;
+            int iw = gw, ih = gh, imw = mw, imh = mh;
+            clSetKernelArg(kern, 0, sizeof(cl_mem), &scr_g);
+            clSetKernelArg(kern, 1, sizeof(cl_mem), &map_g);
+            clSetKernelArg(kern, 2, sizeof(float), &px);
+            clSetKernelArg(kern, 3, sizeof(float), &py);
+            clSetKernelArg(kern, 4, sizeof(float), &pa);
+            clSetKernelArg(kern, 5, sizeof(int), &iw);
+            clSetKernelArg(kern, 6, sizeof(int), &ih);
+            clSetKernelArg(kern, 7, sizeof(int), &imw);
+            clSetKernelArg(kern, 8, sizeof(int), &imh);
+            clEnqueueNDRangeKernel(gpu->queue, kern, 1, NULL, &gws, NULL, 0, NULL, NULL);
+            clFinish(gpu->queue);
+            clEnqueueReadBuffer(gpu->queue, scr_g, CL_TRUE, 0, gw*gh*sizeof(int), screen, 0, NULL, NULL);
+        }
 
         term_clear();
         for (int y = 0; y < gh; y++)
@@ -134,7 +143,7 @@ int game_raycaster(gpu_ctx_t *gpu) {
         term_printf(gh+2, 0, 7, 0, " Arrows=Move/Turn  Q=Quit ");
         term_refresh();
 
-        platform_sleep_ms(30);
+        platform_sleep_ms(16);
     }
 
     clReleaseKernel(kern); clReleaseProgram(prog);

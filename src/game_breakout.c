@@ -1,8 +1,11 @@
 /*
  * Breakout - Break bricks with a bouncing ball, collision on GPU
+ * Logic: 30ms per step | Render: 60 FPS
  */
 
 #include "src/common.h"
+
+#define BREAKOUT_LOGIC_MS 30
 
 static const char *breakout_kernel_src =
 "__kernel void breakout_update(\n"
@@ -55,39 +58,43 @@ int game_breakout(gpu_ctx_t *gpu) {
     cl_program prog = gpu_build(gpu, breakout_kernel_src);
     cl_kernel kern = clCreateKernel(prog, "breakout_update", &err);
 
+    double next_logic = now_us();
+
     while (1) {
         int key = read_key();
         if (key == 'q' || key == 'Q' || key == 27) break;
         if (key == KEY_LEFT_ && state[7] > 0) state[7] -= 2.0f;
         if (key == KEY_RIGHT_ && state[7] < gw - pw) state[7] += 2.0f;
 
-        clEnqueueWriteBuffer(gpu->queue, bk_g, CL_TRUE, 0, bw*bh*sizeof(int), bricks, 0, NULL, NULL);
-        clEnqueueWriteBuffer(gpu->queue, st_g, CL_TRUE, 0, sizeof(state), state, 0, NULL, NULL);
-        size_t gws = 1;
-        clSetKernelArg(kern, 0, sizeof(cl_mem), &bk_g);
-        clSetKernelArg(kern, 1, sizeof(cl_mem), &st_g);
-        clSetKernelArg(kern, 2, sizeof(int), &bw);
-        clSetKernelArg(kern, 3, sizeof(int), &bh);
-        clSetKernelArg(kern, 4, sizeof(int), &gw);
-        clSetKernelArg(kern, 5, sizeof(int), &gh);
-        clEnqueueNDRangeKernel(gpu->queue, kern, 1, NULL, &gws, NULL, 0, NULL, NULL);
-        clFinish(gpu->queue);
-        clEnqueueReadBuffer(gpu->queue, bk_g, CL_TRUE, 0, bw*bh*sizeof(int), bricks, 0, NULL, NULL);
-        clEnqueueReadBuffer(gpu->queue, st_g, CL_TRUE, 0, sizeof(state), state, 0, NULL, NULL);
+        double now = now_us();
+        if (now >= next_logic) {
+            next_logic = now + BREAKOUT_LOGIC_MS * 1000.0;
+
+            clEnqueueWriteBuffer(gpu->queue, bk_g, CL_TRUE, 0, bw*bh*sizeof(int), bricks, 0, NULL, NULL);
+            clEnqueueWriteBuffer(gpu->queue, st_g, CL_TRUE, 0, sizeof(state), state, 0, NULL, NULL);
+            size_t gws = 1;
+            clSetKernelArg(kern, 0, sizeof(cl_mem), &bk_g);
+            clSetKernelArg(kern, 1, sizeof(cl_mem), &st_g);
+            clSetKernelArg(kern, 2, sizeof(int), &bw);
+            clSetKernelArg(kern, 3, sizeof(int), &bh);
+            clSetKernelArg(kern, 4, sizeof(int), &gw);
+            clSetKernelArg(kern, 5, sizeof(int), &gh);
+            clEnqueueNDRangeKernel(gpu->queue, kern, 1, NULL, &gws, NULL, 0, NULL, NULL);
+            clFinish(gpu->queue);
+            clEnqueueReadBuffer(gpu->queue, bk_g, CL_TRUE, 0, bw*bh*sizeof(int), bricks, 0, NULL, NULL);
+            clEnqueueReadBuffer(gpu->queue, st_g, CL_TRUE, 0, sizeof(state), state, 0, NULL, NULL);
+        }
 
         int bx = (int)state[0], by = (int)state[1];
         int pad = (int)state[7];
 
         term_clear();
-        /* Bricks */
         for (int y = 0; y < bh; y++)
             for (int x = 0; x < bw; x++)
                 if (bricks[y * bw + x] > 0)
                     term_printf(y + 1, x + 1, bricks[y * bw + x] % 6 + 1, 0, "#");
-        /* Paddle */
         for (int i = 0; i < pw; i++)
             term_printf(gh - 1, pad + i + 1, 5, 1, "=");
-        /* Ball */
         if (by >= 0 && by < gh && bx >= 0 && bx < gw)
             term_printf(by + 1, bx + 1, 3, 1, "O");
 
@@ -112,7 +119,7 @@ int game_breakout(gpu_ctx_t *gpu) {
             break;
         }
 
-        platform_sleep_ms(30);
+        platform_sleep_ms(16);
     }
 
     clReleaseKernel(kern); clReleaseProgram(prog);

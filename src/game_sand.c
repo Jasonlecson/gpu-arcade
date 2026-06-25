@@ -1,5 +1,6 @@
 /*
  * Falling Sand - Particle simulation (sand/water/fire), physics on GPU
+ * Logic: 40ms per step | Render: 60 FPS
  */
 
 #include "src/common.h"
@@ -8,6 +9,7 @@
 #define WATER 2
 #define STONE 3
 #define FIRE 4
+#define SAND_LOGIC_MS 40
 
 static const char *sand_kernel_src =
 "__kernel void sand_step(\n"
@@ -58,13 +60,12 @@ int game_sand(gpu_ctx_t *gpu) {
     int *rng = malloc(gw * gh * sizeof(int));
     for (int i = 0; i < gw * gh; i++) rng[i] = rand();
 
-    /* Add some stone platforms */
     for (int x = gw/4; x < gw*3/4; x++) {
         grid_a[gh*2/3 * gw + x] = STONE;
         grid_a[gh/3 * gw + x] = STONE;
     }
 
-    int brush = SAND, use_a = 1, dirty = 1;
+    int brush = SAND, use_a = 1;
 
     cl_int err;
     cl_mem ga = clCreateBuffer(gpu->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, gw*gh*sizeof(int), grid_a, &err);
@@ -72,6 +73,9 @@ int game_sand(gpu_ctx_t *gpu) {
     cl_mem rg = clCreateBuffer(gpu->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, gw*gh*sizeof(int), rng, &err);
     cl_program prog = gpu_build(gpu, sand_kernel_src);
     cl_kernel kern = clCreateKernel(prog, "sand_step", &err);
+
+    int *display = grid_a;
+    double next_logic = now_us();
 
     while (1) {
         int key = read_key();
@@ -83,10 +87,8 @@ int game_sand(gpu_ctx_t *gpu) {
         if (key == 'c' || key == 'C') {
             memset(grid_a, 0, gw*gh*sizeof(int));
             clEnqueueWriteBuffer(gpu->queue, ga, CL_TRUE, 0, gw*gh*sizeof(int), grid_a, 0, NULL, NULL);
-            dirty = 1;
         }
 
-        /* Place particles with keyboard (simulate mouse with keys) */
         if (key == ' ') {
             int cx = gw/2, cy = gh/2;
             for (int dy = -2; dy <= 2; dy++)
@@ -98,51 +100,50 @@ int game_sand(gpu_ctx_t *gpu) {
                     }
                 }
             clEnqueueWriteBuffer(gpu->queue, ga, CL_TRUE, 0, gw*gh*sizeof(int), grid_a, 0, NULL, NULL);
-            dirty = 1;
         }
 
-        /* Simulate */
-        cl_mem src = use_a ? ga : gb;
-        cl_mem dst = use_a ? gb : ga;
-        size_t gws[2] = {gw, gh};
-        clSetKernelArg(kern, 0, sizeof(cl_mem), &src);
-        clSetKernelArg(kern, 1, sizeof(cl_mem), &dst);
-        clSetKernelArg(kern, 2, sizeof(cl_mem), &rg);
-        clSetKernelArg(kern, 3, sizeof(int), &gw);
-        clSetKernelArg(kern, 4, sizeof(int), &gh);
-        clEnqueueNDRangeKernel(gpu->queue, kern, 2, NULL, gws, NULL, 0, NULL, NULL);
-        clFinish(gpu->queue);
+        double now = now_us();
+        if (now >= next_logic) {
+            next_logic = now + SAND_LOGIC_MS * 1000.0;
 
-        int *display = use_a ? grid_b : grid_a;
-        clEnqueueReadBuffer(gpu->queue, dst, CL_TRUE, 0, gw*gh*sizeof(int), display, 0, NULL, NULL);
-        use_a = !use_a;
-        dirty = 1;
+            cl_mem src = use_a ? ga : gb;
+            cl_mem dst = use_a ? gb : ga;
+            size_t gws[2] = {gw, gh};
+            clSetKernelArg(kern, 0, sizeof(cl_mem), &src);
+            clSetKernelArg(kern, 1, sizeof(cl_mem), &dst);
+            clSetKernelArg(kern, 2, sizeof(cl_mem), &rg);
+            clSetKernelArg(kern, 3, sizeof(int), &gw);
+            clSetKernelArg(kern, 4, sizeof(int), &gh);
+            clEnqueueNDRangeKernel(gpu->queue, kern, 2, NULL, gws, NULL, 0, NULL, NULL);
+            clFinish(gpu->queue);
 
-        if (dirty) {
-            dirty = 0;
-            term_clear();
-            for (int y = 0; y < gh; y++)
-                for (int x = 0; x < gw; x++) {
-                    int v = display[y*gw+x];
-                    switch (v) {
-                        case 0: term_printf(y+1, x+1, 7, 0, " "); break;
-                        case SAND:  term_printf(y+1, x+1, 3, 0, "."); break;
-                        case WATER: term_printf(y+1, x+1, 5, 0, "~"); break;
-                        case STONE: term_printf(y+1, x+1, 4, 0, "#"); break;
-                        case FIRE:  term_printf(y+1, x+1, 2, 1, "*"); break;
-                    }
+            display = use_a ? grid_b : grid_a;
+            clEnqueueReadBuffer(gpu->queue, dst, CL_TRUE, 0, gw*gh*sizeof(int), display, 0, NULL, NULL);
+            use_a = !use_a;
+        }
+
+        term_clear();
+        for (int y = 0; y < gh; y++)
+            for (int x = 0; x < gw; x++) {
+                int v = display[y*gw+x];
+                switch (v) {
+                    case 0: term_printf(y+1, x+1, 7, 0, " "); break;
+                    case SAND:  term_printf(y+1, x+1, 3, 0, "."); break;
+                    case WATER: term_printf(y+1, x+1, 5, 0, "~"); break;
+                    case STONE: term_printf(y+1, x+1, 4, 0, "#"); break;
+                    case FIRE:  term_printf(y+1, x+1, 2, 1, "*"); break;
                 }
+            }
 
-            const char *brush_name = "Sand";
-            if (brush == WATER) brush_name = "Water";
-            if (brush == STONE) brush_name = "Stone";
-            if (brush == FIRE) brush_name = "Fire";
-            term_printf(0, 0, 6, 1, " FALLING SAND | Brush: %s | 1-4=Select C=Clear Q=Quit ", brush_name);
-            term_printf(gh+2, 0, 7, 0, " 1=Sand 2=Water 3=Stone 4=Fire  Space=Place  C=Clear ");
-            term_refresh();
-        }
+        const char *brush_name = "Sand";
+        if (brush == WATER) brush_name = "Water";
+        if (brush == STONE) brush_name = "Stone";
+        if (brush == FIRE) brush_name = "Fire";
+        term_printf(0, 0, 6, 1, " FALLING SAND | Brush: %s | 1-4=Select C=Clear Q=Quit ", brush_name);
+        term_printf(gh+2, 0, 7, 0, " 1=Sand 2=Water 3=Stone 4=Fire  Space=Place  C=Clear ");
+        term_refresh();
 
-        platform_sleep_ms(50);
+        platform_sleep_ms(16);
     }
 
     clReleaseKernel(kern); clReleaseProgram(prog);

@@ -166,7 +166,7 @@ int game_tetris(gpu_ctx_t *gpu) {
         term_printf(sh - 1, 0, 7, 0, " Arrows=Move Up=Rotate Q=Quit ");
         term_refresh();
 
-        platform_sleep_ms(50);
+        platform_sleep_ms(16);
     }
 
     if (game_over) {

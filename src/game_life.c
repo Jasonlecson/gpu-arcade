@@ -1,8 +1,11 @@
 /*
  * Game of Life - Conway's cellular automaton, GPU-accelerated
+ * Logic: 100ms per generation | Render: 60 FPS
  */
 
 #include "src/common.h"
+
+#define LIFE_LOGIC_MS 100
 
 static const char *life_kernel_src =
 "__kernel void life_step(\n"
@@ -33,7 +36,6 @@ int game_life(gpu_ctx_t *gpu) {
     int *grid_a = calloc(gw * gh, sizeof(int));
     int *grid_b = calloc(gw * gh, sizeof(int));
 
-    /* Random initial state */
     for (int i = 0; i < gw * gh; i++)
         grid_a[i] = rand() % 4 == 0 ? 1 : 0;
 
@@ -43,8 +45,8 @@ int game_life(gpu_ctx_t *gpu) {
     cl_program prog = gpu_build(gpu, life_kernel_src);
     cl_kernel kern = clCreateKernel(prog, "life_step", &err);
 
-    int gen = 0, paused = 0;
-    int use_a = 1;
+    int gen = 0, paused = 0, use_a = 1;
+    double next_logic = now_us();
 
     while (1) {
         int key = read_key();
@@ -56,7 +58,10 @@ int game_life(gpu_ctx_t *gpu) {
             gen = 0; use_a = 1;
         }
 
-        if (!paused) {
+        double now = now_us();
+        if (!paused && now >= next_logic) {
+            next_logic = now + LIFE_LOGIC_MS * 1000.0;
+
             cl_mem src = use_a ? ga : gb;
             cl_mem dst = use_a ? gb : ga;
             size_t gws[2] = {gw, gh};
@@ -90,7 +95,7 @@ int game_life(gpu_ctx_t *gpu) {
         term_printf(gh + 2, 0, 5, 0, " Grid: %dx%d | %d threads on GPU ", gw, gh, gw * gh);
         term_refresh();
 
-        platform_sleep_ms(100);
+        platform_sleep_ms(16);
     }
 
     clReleaseKernel(kern); clReleaseProgram(prog);

@@ -105,7 +105,7 @@ int game_mandelbrot(gpu_ctx_t *gpu) {
         term_printf(gh + 2, 0, 7, 0, " Arrows=Pan +/-=Zoom I=Iter R=Reset Q=Quit | %dx%d GPU ", gw, gh);
         term_refresh();
 
-        platform_sleep_ms(30);
+        platform_sleep_ms(16);
     }
 
     clReleaseKernel(kern); clReleaseProgram(prog);

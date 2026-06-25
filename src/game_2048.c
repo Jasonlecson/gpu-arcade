@@ -168,7 +168,7 @@ int game_2048(gpu_ctx_t *gpu) {
             break;
         }
 
-        platform_sleep_ms(50);
+        platform_sleep_ms(16);
     }
 
     clReleaseKernel(kern); clReleaseProgram(prog);
