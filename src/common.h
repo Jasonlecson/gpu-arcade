@@ -82,7 +82,8 @@ static void term_init(void) {
     SetConsoleOutputCP(65001);
     CONSOLE_CURSOR_INFO ci = {1, FALSE};
     SetConsoleCursorInfo(hCon, &ci);
-    SetConsoleMode(hConIn, ENABLE_EXTENDED_FLAGS);
+    SetConsoleMode(hConIn, ENABLE_PROCESSED_INPUT | ENABLE_EXTENDED_FLAGS);
+    FlushConsoleInputBuffer(hConIn);
     CONSOLE_SCREEN_BUFFER_INFO sbi;
     GetConsoleScreenBufferInfo(hCon, &sbi);
     g_fb_w = sbi.srWindow.Right - sbi.srWindow.Left + 1;
@@ -175,7 +176,8 @@ static int term_getch(void) {
 static int term_getch_nb(void) {
     INPUT_RECORD ir;
     DWORD n;
-    if (WaitForSingleObject(hConIn, 0) != WAIT_OBJECT_0) return -1;
+    DWORD nevt = 0;
+    if (!GetNumberOfConsoleInputEvents(hConIn, &nevt) || nevt == 0) return -1;
     while (PeekConsoleInput(hConIn, &ir, 1, &n) && n > 0) {
         ReadConsoleInput(hConIn, &ir, 1, &n);
         if (ir.EventType == KEY_EVENT && ir.Event.KeyEvent.bKeyDown)
