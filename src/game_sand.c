@@ -104,6 +104,7 @@ restart: ;
                 if (grid_b[i] != STONE) grid_b[i] = 0;
             clEnqueueWriteBuffer(gpu->queue, ga, CL_TRUE, 0, gw*gh*sizeof(int), grid_a, 0, NULL, NULL);
             clEnqueueWriteBuffer(gpu->queue, gb, CL_TRUE, 0, gw*gh*sizeof(int), grid_b, 0, NULL, NULL);
+            display = use_a ? grid_a : grid_b;
         }
 
         if (key == KEY_UP_ && cy > 0) cy--;
