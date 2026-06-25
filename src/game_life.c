@@ -5,7 +5,7 @@
 
 #include "src/common.h"
 
-#define LIFE_LOGIC_MS 100
+#define LIFE_LOGIC_MS 16
 
 static const char *life_kernel_src =
 "__kernel void life_step(\n"
