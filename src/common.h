@@ -80,10 +80,7 @@ static void term_init(void) {
     SetConsoleOutputCP(65001);
     CONSOLE_CURSOR_INFO ci = {1, FALSE};
     SetConsoleCursorInfo(hCon, &ci);
-    CONSOLE_SCREEN_BUFFER_INFO sbi;
-    GetConsoleScreenBufferInfo(hCon, &sbi);
-    g_fb_w = sbi.srWindow.Right - sbi.srWindow.Left + 1;
-    g_fb_h = sbi.srWindow.Bottom - sbi.srWindow.Top + 1;
+    get_terminal_size(&g_fb_w, &g_fb_h);
     g_fb = malloc(g_fb_w * g_fb_h * sizeof(CHAR_INFO));
 }
 
@@ -111,10 +108,10 @@ static WORD win_attr(int color, int bold) {
 }
 
 static void term_clear(void) {
-    CONSOLE_SCREEN_BUFFER_INFO sbi;
-    GetConsoleScreenBufferInfo(hCon, &sbi);
-    g_fb_w = sbi.srWindow.Right - sbi.srWindow.Left + 1;
-    g_fb_h = sbi.srWindow.Bottom - sbi.srWindow.Top + 1;
+    int tw, th;
+    get_terminal_size(&tw, &th);
+    g_fb_w = tw;
+    g_fb_h = th;
     g_fb = realloc(g_fb, g_fb_w * g_fb_h * sizeof(CHAR_INFO));
     for (int i = 0; i < g_fb_h * g_fb_w; i++) {
         g_fb[i].Char.UnicodeChar = ' ';
@@ -126,12 +123,7 @@ static void term_refresh(void) {
     COORD buf_sz = {(SHORT)g_fb_w, (SHORT)g_fb_h};
     COORD buf_org = {0, 0};
     SMALL_RECT rc = {0, 0, (SHORT)(g_fb_w - 1), (SHORT)(g_fb_h - 1)};
-    static int rfc = 0;
-    FILE *rf = fopen("gpu_arcade_refresh.log", rfc ? "a" : "w");
-    if (rf) { fprintf(rf, "refresh #%d: %dx%d\n", rfc, g_fb_w, g_fb_h); fflush(rf); }
-    BOOL ok = WriteConsoleOutputW(hCon, g_fb, buf_sz, buf_org, &rc);
-    if (rf) { fprintf(rf, "refresh result: %d, lasterr=%lu\n", ok, GetLastError()); fclose(rf); }
-    rfc++;
+    WriteConsoleOutputW(GetStdHandle(STD_OUTPUT_HANDLE), g_fb, buf_sz, buf_org, &rc);
 }
 
 static void term_puts(int y, int x, const char *s, int color, int bold) {
