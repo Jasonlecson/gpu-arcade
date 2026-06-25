@@ -45,7 +45,7 @@ restart: ;
     int piece = rand() % 7, rot = 0, px = TET_W / 2 - 1, py = 0;
     int next_piece = rand() % 7;
     int score = 0, level = 1, lines_cleared = 0;
-    int drop_timer = 0, drop_interval = 3000;
+    int drop_timer = 0, drop_interval = 3000000;
 
     cl_int err;
     cl_mem board_g = clCreateBuffer(gpu->ctx, CL_MEM_READ_WRITE, TET_W*TET_H*sizeof(int), NULL, &err);
@@ -128,8 +128,8 @@ restart: ;
                     lines_cleared += cleared;
                     score += cleared * cleared * 100;
                     level = lines_cleared / 10 + 1;
-                    drop_interval = 3000 - (level - 1) * 150;
-                    if (drop_interval < 400) drop_interval = 400;
+                    drop_interval = 3000000 - (level - 1) * 150000;
+                    if (drop_interval < 400000) drop_interval = 400000;
                 }
 
                 piece = next_piece;
@@ -172,7 +172,7 @@ restart: ;
         term_printf(oy + 6, ox + TET_W * 2 + 2, 4, 0, "Score: %d", score);
         term_printf(oy + 7, ox + TET_W * 2 + 2, 4, 0, "Level: %d", level);
         term_printf(oy + 8, ox + TET_W * 2 + 2, 4, 0, "Lines: %d", lines_cleared);
-        term_printf(oy + 10, ox + TET_W * 2 + 2, 5, 0, "Speed: %dms", drop_interval);
+        term_printf(oy + 10, ox + TET_W * 2 + 2, 5, 0, "Speed: %dms", drop_interval / 1000);
         term_printf(sh - 1, 0, 7, 0, " Arrows=Move Up=Rotate Q=Quit ");
         draw_metrics(gpu, sh, fc++, sess, 0);
         term_refresh();
