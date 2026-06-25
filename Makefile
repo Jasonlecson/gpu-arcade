@@ -11,7 +11,7 @@ ifeq ($(UNAME_S),Linux)
 else ifeq ($(UNAME_S),Darwin)
   LDFLAGS = -framework OpenCL -lncurses -lm
 else
-  LDFLAGS = -lOpenCL
+  LDFLAGS = -lOpenCL -lm
 endif
 
 all: $(TARGET)

@@ -25,21 +25,6 @@ static const char *mandel_kernel_src =
 "    buf[y * W + x] = iter;\n"
 "}\n";
 
-static int iter_to_color(int iter, int max_iter) {
-    if (iter >= max_iter) return 0;
-    int t = iter % 16;
-    switch (t) {
-        case 0: return 0; case 1: return 1; case 2: return 2;
-        case 3: return 3; case 4: return 4; case 5: return 5;
-        case 6: return 6; case 7: return 7; case 8: return 1;
-        case 9: return 2; case 10: return 3; case 11: return 4;
-        case 12: return 5; case 13: return 6; case 14: return 7;
-        default: return 4;
-    }
-}
-
-static const char *iter_chars = " .:-=+*#%@";
-
 int game_mandelbrot(gpu_ctx_t *gpu) {
     int sw, sh;
     get_terminal_size(&sw, &sh);
@@ -89,14 +74,13 @@ int game_mandelbrot(gpu_ctx_t *gpu) {
         term_clear();
         for (int y = 0; y < gh; y++)
             for (int x = 0; x < gw; x++) {
-                int ci = iter_to_color(buf[y*gw+x], max_iter);
                 int v = buf[y*gw+x];
                 if (v >= max_iter)
                     term_printf(y + 1, x + 1, 0, 0, " ");
                 else {
-                    int ci2 = (v * 7 / max_iter) + 1;
-                    if (ci2 > 7) ci2 = 7;
-                    term_printf(y + 1, x + 1, ci2, 1, "#");
+                    int ci = (v * 7 / max_iter) + 1;
+                    if (ci > 7) ci = 7;
+                    term_printf(y + 1, x + 1, ci, 1, "#");
                 }
             }
 

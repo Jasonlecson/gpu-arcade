@@ -66,9 +66,10 @@ int game_snake(gpu_ctx_t *gpu) {
     int head[2] = {sy, sx}, dir[1] = {3}, len[1] = {4}, status[1] = {0};
     int rng[1] = {(int)(time(NULL) * 1000) & 0x7FFFFFFF};
     for (int f = 0; f < SNAKE_FOOD; f++) {
-        int fy, fx;
-        do { fy = rand() % gh; fx = rand() % gw; } while (grid[fy * gw + fx] != 0);
-        grid[fy * gw + fx] = -1;
+        int fy, fx, tries = 0;
+        do { fy = rand() % gh; fx = rand() % gw; tries++; }
+        while (grid[fy * gw + fx] != 0 && tries < 1000);
+        if (grid[fy * gw + fx] == 0) grid[fy * gw + fx] = -1;
     }
 
     cl_int err;

@@ -29,10 +29,10 @@ static void spawn_tile(int *grid, int w, int h) {
 
 static int slide_row(int *row, int n) {
     int score = 0;
-    int tmp[8], tc = 0;
+    int tmp[16], tc = 0;
     for (int i = 0; i < n; i++)
         if (row[i] != 0) tmp[tc++] = row[i];
-    int out[8], oc = 0;
+    int out[16], oc = 0;
     for (int i = 0; i < tc; i++) {
         if (i + 1 < tc && tmp[i] == tmp[i + 1]) {
             int v = tmp[i] * 2;
@@ -55,7 +55,7 @@ static void slide_left(int *grid, int w, int h, int *score) {
 
 static void slide_right(int *grid, int w, int h, int *score) {
     for (int y = 0; y < h; y++) {
-        int row[8];
+        int row[16];
         for (int x = 0; x < w; x++) row[x] = grid[y * w + w - 1 - x];
         int s = slide_row(row, w);
         for (int x = 0; x < w; x++) grid[y * w + w - 1 - x] = row[x];
@@ -65,7 +65,7 @@ static void slide_right(int *grid, int w, int h, int *score) {
 
 static void slide_up(int *grid, int w, int h, int *score) {
     for (int x = 0; x < w; x++) {
-        int row[8];
+        int row[16];
         for (int y = 0; y < h; y++) row[y] = grid[y * w + x];
         int s = slide_row(row, h);
         for (int y = 0; y < h; y++) grid[y * w + x] = row[y];
@@ -75,7 +75,7 @@ static void slide_up(int *grid, int w, int h, int *score) {
 
 static void slide_down(int *grid, int w, int h, int *score) {
     for (int x = 0; x < w; x++) {
-        int row[8];
+        int row[16];
         for (int y = 0; y < h; y++) row[y] = grid[(h - 1 - y) * w + x];
         int s = slide_row(row, h);
         for (int y = 0; y < h; y++) grid[(h - 1 - y) * w + x] = row[y];
@@ -114,7 +114,7 @@ int game_2048(gpu_ctx_t *gpu) {
             continue;
         }
 
-        int old_grid[16];
+        int old_grid[16] = {0};
         memcpy(old_grid, grid, gw*gh*sizeof(int));
 
         if (key == KEY_UP_) slide_up(grid, gw, gh, &score);

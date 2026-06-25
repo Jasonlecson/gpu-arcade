@@ -87,7 +87,7 @@ static void term_init(void) {
 static void term_cleanup(void) {
     free(g_fb);
     CONSOLE_CURSOR_INFO ci = {1, TRUE};
-    SetConsoleCursorInfo(hCon, &ci);
+    SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &ci);
     system("cls");
 }
 
@@ -205,7 +205,7 @@ static void term_wait_key(void) { term_getch(); }
 static void term_init(void) {
     setlocale(LC_ALL, "");
     initscr(); cbreak(); noecho(); curs_set(0);
-    nodelay(stdscr, TRUE); timeout(50);
+    nodelay(stdscr, TRUE); timeout(0);
     keypad(stdscr, TRUE);
     start_color(); use_default_colors();
     init_pair(1, COLOR_GREEN, -1);
@@ -222,10 +222,9 @@ static void term_cleanup(void) { endwin(); }
 static void term_puts(int y, int x, const char *s, int color, int bold) {
     int attr = COLOR_PAIR(color);
     if (bold) attr |= A_BOLD;
+    attron(attr);
     mvaddstr(y, x, s);
-    /* note: attr must be set before mvaddstr in ncurses;
-       we use a wrapper approach */
-    (void)attr;
+    attroff(attr);
 }
 
 static void term_printf(int y, int x, int color, int bold, const char *fmt, ...) {
