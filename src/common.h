@@ -163,8 +163,9 @@ static int win_read_key(INPUT_RECORD *ir) {
 static int term_getch(void) {
     INPUT_RECORD ir;
     DWORD n;
+    HANDLE hin = GetStdHandle(STD_INPUT_HANDLE);
     while (1) {
-        if (!ReadConsoleInput(hConIn, &ir, 1, &n)) continue;
+        if (!ReadConsoleInput(hin, &ir, 1, &n)) continue;
         if (ir.EventType != KEY_EVENT) continue;
         if (!ir.Event.KeyEvent.bKeyDown) continue;
         return win_read_key(&ir);
@@ -174,12 +175,13 @@ static int term_getch(void) {
 static int term_getch_nb(void) {
     INPUT_RECORD ir;
     DWORD n;
-    while (PeekConsoleInput(hConIn, &ir, 1, &n) && n > 0) {
+    HANDLE hin = GetStdHandle(STD_INPUT_HANDLE);
+    while (PeekConsoleInput(hin, &ir, 1, &n) && n > 0) {
         if (ir.EventType == KEY_EVENT && ir.Event.KeyEvent.bKeyDown) {
-            ReadConsoleInput(hConIn, &ir, 1, &n);
+            ReadConsoleInput(hin, &ir, 1, &n);
             return win_read_key(&ir);
         }
-        ReadConsoleInput(hConIn, &ir, 1, &n);
+        ReadConsoleInput(hin, &ir, 1, &n);
     }
     return -1;
 }
@@ -187,10 +189,11 @@ static int term_getch_nb(void) {
 static int term_kbhit(void) {
     INPUT_RECORD ir;
     DWORD n;
-    while (PeekConsoleInput(hConIn, &ir, 1, &n) && n > 0) {
+    HANDLE hin = GetStdHandle(STD_INPUT_HANDLE);
+    while (PeekConsoleInput(hin, &ir, 1, &n) && n > 0) {
         if (ir.EventType == KEY_EVENT && ir.Event.KeyEvent.bKeyDown)
             return 1;
-        ReadConsoleInput(hConIn, &ir, 1, &n);
+        ReadConsoleInput(hin, &ir, 1, &n);
     }
     return 0;
 }
