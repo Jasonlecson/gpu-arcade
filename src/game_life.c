@@ -33,7 +33,7 @@ restart: ;
     int sw, sh;
     get_terminal_size(&sw, &sh);
     prev_w = sw; prev_h = sh;
-    int gw = sw - 2, gh = sh - 6;
+    int gw = sw - 2, gh = sh - 8;
     if (gw < 10) gw = 10;
     if (gh < 5) gh = 5;
 
