@@ -45,7 +45,7 @@ restart: ;
     int piece = rand() % 7, rot = 0, px = TET_W / 2 - 1, py = 0;
     int next_piece = rand() % 7;
     int score = 0, level = 1, lines_cleared = 0;
-    int drop_timer = 0, drop_interval = 1500;
+    int drop_timer = 0, drop_interval = 2000;
 
     cl_int err;
     cl_mem board_g = clCreateBuffer(gpu->ctx, CL_MEM_READ_WRITE, TET_W*TET_H*sizeof(int), NULL, &err);
@@ -128,8 +128,8 @@ restart: ;
                     lines_cleared += cleared;
                     score += cleared * cleared * 100;
                     level = lines_cleared / 10 + 1;
-                    drop_interval = 1500 - (level - 1) * 80;
-                    if (drop_interval < 200) drop_interval = 200;
+                    drop_interval = 2000 - (level - 1) * 100;
+                    if (drop_interval < 300) drop_interval = 300;
                 }
 
                 piece = next_piece;
