@@ -94,6 +94,9 @@ static int menu(gpu_ctx_t *gpu) {
         term_refresh();
 
         int key = read_key();
+        static FILE *mdbg = NULL;
+        if (!mdbg) mdbg = fopen("gpu_arcade_menu_debug.log", "w");
+        if (mdbg && key != -1) { fprintf(mdbg, "key=%d (sel=%d)\n", key, selected); fflush(mdbg); }
         if (key == KEY_UP_ && selected > 0) selected--;
         else if (key == KEY_DOWN_ && selected < NUM_GAMES - 1) selected++;
         else if (key >= '1' && key <= '0' + NUM_GAMES) selected = key - '1';
@@ -109,14 +112,21 @@ int main(void) {
     term_init();
     gpu_ctx_t gpu = gpu_init();
 
+    FILE *dbg = fopen("gpu_arcade_debug.log", "w");
+    if (dbg) { fprintf(dbg, "main: init done\n"); fflush(dbg); }
+
     while (1) {
         int choice = menu(&gpu);
+        if (dbg) { fprintf(dbg, "main: menu returned %d\n", choice); fflush(dbg); }
         if (choice < 0) break;
 
+        if (dbg) { fprintf(dbg, "main: calling game %d\n", choice); fflush(dbg); }
         int play_again = games[choice].run(&gpu);
+        if (dbg) { fprintf(dbg, "main: game returned %d\n", play_again); fflush(dbg); }
         (void)play_again;
     }
 
+    if (dbg) { fprintf(dbg, "main: exiting\n"); fclose(dbg); }
     gpu_free(&gpu);
     term_cleanup();
     printf("Thanks for playing GPU Arcade!\n");
