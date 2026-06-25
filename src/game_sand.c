@@ -1,16 +1,20 @@
 /*
- * Falling Sand - Particle simulation (sand/water/fire), physics on GPU
- * Logic: 40ms per step | Render: 60 FPS
+ * Falling Sand - Particle simulation, physics on GPU
+ * Logic: 30ms per step | Render: 60 FPS
+ * Materials: Sand, Water, Stone, Fire, Lava, Acid, Smoke
  */
 
 #include "src/common.h"
 
-#define SAND 1
-#define WATER 2
-#define STONE 3
-#define FIRE 4
-#define BORDER 5
-#define SAND_LOGIC_MS 40
+#define SAND    1
+#define WATER   2
+#define STONE   3
+#define FIRE    4
+#define BORDER  5
+#define LAVA    6
+#define ACID    7
+#define SMOKE   8
+#define SAND_LOGIC_MS 30
 
 static const char *sand_kernel_src =
 "__kernel void sand_step(\n"
@@ -27,28 +31,72 @@ static const char *sand_kernel_src =
 "    int seed = rng[id];\n"
 "    int r = (seed * 1103515245 + 12345) & 0x7fffffff;\n"
 "    rng[id] = r;\n"
-"    int rand_dir = (r & 1) ? 1 : -1;\n"
+"    int rd = (r & 1) ? 1 : -1;\n"
+"    int d;\n"
 "    if (v == 1) {\n"
-"        if (y + 1 < H && in[(y+1)*W+x] == 0) { out[id] = 0; out[(y+1)*W+x] = 1; return; }\n"
-"        int d = rand_dir;\n"
+"        if (y+1 < H && in[(y+1)*W+x] == 0) { out[id] = 0; out[(y+1)*W+x] = 1; return; }\n"
+"        d = rd;\n"
 "        if (y+1 < H && x+d >= 0 && x+d < W && in[(y+1)*W+x+d] == 0) { out[id] = 0; out[(y+1)*W+x+d] = 1; return; }\n"
 "        d = -d;\n"
 "        if (y+1 < H && x+d >= 0 && x+d < W && in[(y+1)*W+x+d] == 0) { out[id] = 0; out[(y+1)*W+x+d] = 1; return; }\n"
 "    } else if (v == 2) {\n"
 "        if (y+1 < H && in[(y+1)*W+x] == 0) { out[id] = 0; out[(y+1)*W+x] = 2; return; }\n"
-"        int d = rand_dir;\n"
+"        d = rd;\n"
 "        if (y+1 < H && x+d >= 0 && x+d < W && in[(y+1)*W+x+d] == 0) { out[id] = 0; out[(y+1)*W+x+d] = 2; return; }\n"
 "        if (x+d >= 0 && x+d < W && in[y*W+x+d] == 0) { out[id] = 0; out[y*W+x+d] = 2; return; }\n"
 "        d = -d;\n"
 "        if (x+d >= 0 && x+d < W && in[y*W+x+d] == 0) { out[id] = 0; out[y*W+x+d] = 2; return; }\n"
 "    } else if (v == 4) {\n"
 "        if (y-1 >= 0 && in[(y-1)*W+x] == 0) { out[id] = 0; out[(y-1)*W+x] = 4; return; }\n"
-"        int d = rand_dir;\n"
+"        d = rd;\n"
 "        if (x+d >= 0 && x+d < W && in[y*W+x+d] == 0) { out[id] = 0; out[y*W+x+d] = 4; return; }\n"
 "        if (r % 100 < 15) { out[id] = 0; return; }\n"
 "        if (y == 0) { out[id] = 0; return; }\n"
+"    } else if (v == 6) {\n"
+"        if (y+1 < H && (in[(y+1)*W+x] == 0 || in[(y+1)*W+x] == 2)) {\n"
+"            if (in[(y+1)*W+x] == 2) { out[(y+1)*W+x] = 3; out[id] = 0; return; }\n"
+"            out[id] = 0; out[(y+1)*W+x] = 6; return;\n"
+"        }\n"
+"        d = rd;\n"
+"        if (y+1 < H && x+d >= 0 && x+d < W && (in[(y+1)*W+x+d] == 0 || in[(y+1)*W+x+d] == 2)) {\n"
+"            if (in[(y+1)*W+x+d] == 2) { out[(y+1)*W+x+d] = 3; out[id] = 0; return; }\n"
+"            out[id] = 0; out[(y+1)*W+x+d] = 6; return;\n"
+"        }\n"
+"        d = -d;\n"
+"        if (y+1 < H && x+d >= 0 && x+d < W && (in[(y+1)*W+x+d] == 0 || in[(y+1)*W+x+d] == 2)) {\n"
+"            if (in[(y+1)*W+x+d] == 2) { out[(y+1)*W+x+d] = 3; out[id] = 0; return; }\n"
+"            out[id] = 0; out[(y+1)*W+x+d] = 6; return;\n"
+"        }\n"
+"    } else if (v == 7) {\n"
+"        if (y+1 < H) {\n"
+"            int below = in[(y+1)*W+x];\n"
+"            if (below == 1 || below == 8) { out[(y+1)*W+x] = 0; out[id] = 0; return; }\n"
+"            if (below == 0) { out[id] = 0; out[(y+1)*W+x] = 7; return; }\n"
+"        }\n"
+"        d = rd;\n"
+"        if (x+d >= 0 && x+d < W) {\n"
+"            int adj = in[y*W+x+d];\n"
+"            if (adj == 1 || adj == 8) { out[y*W+x+d] = 0; out[id] = 0; return; }\n"
+"            if (adj == 0) { out[id] = 0; out[y*W+x+d] = 7; return; }\n"
+"        }\n"
+"        d = -d;\n"
+"        if (x+d >= 0 && x+d < W) {\n"
+"            int adj = in[y*W+x+d];\n"
+"            if (adj == 1 || adj == 8) { out[y*W+x+d] = 0; out[id] = 0; return; }\n"
+"            if (adj == 0) { out[id] = 0; out[y*W+x+d] = 7; return; }\n"
+"        }\n"
+"    } else if (v == 8) {\n"
+"        if (y-1 >= 0 && in[(y-1)*W+x] == 0) { out[id] = 0; out[(y-1)*W+x] = 8; return; }\n"
+"        d = rd;\n"
+"        if (x+d >= 0 && x+d < W && in[y*W+x+d] == 0) { out[id] = 0; out[y*W+x+d] = 8; return; }\n"
+"        if (r % 100 < 8) { out[id] = 0; return; }\n"
+"        if (y == 0) { out[id] = 0; return; }\n"
 "    }\n"
 "}\n";
+
+static const char *sand_materials[] = {"Sand", "Water", "Stone", "Fire", "Lava", "Acid", "Smoke"};
+static const int sand_ids[] = {1, 2, 3, 4, 6, 7, 8};
+#define NUM_MATERIALS 7
 
 int game_sand(gpu_ctx_t *gpu) {
     int prev_w = 0, prev_h = 0;
@@ -70,15 +118,12 @@ restart: ;
         grid_a[x] = BORDER;
         grid_a[(gh - 1) * gw + x] = BORDER;
     }
-
-    for (int x = gw/4; x < gw*3/4; x++) {
+    for (int x = gw/4; x < gw*3/4; x++)
         grid_a[(gh*2/3) * gw + x] = STONE;
-    }
-    for (int x = gw/5; x < gw*4/5; x++) {
+    for (int x = gw/5; x < gw*4/5; x++)
         grid_a[(gh/3) * gw + x] = STONE;
-    }
 
-    int brush = SAND, use_a = 1;
+    int brush_idx = 0, use_a = 1;
     int cx = gw / 2, cy = gh / 2;
 
     cl_int err;
@@ -99,10 +144,8 @@ restart: ;
 
         int key = read_key();
         if (key == 'q' || key == 'Q' || key == 27) break;
-        if (key == '1') brush = SAND;
-        if (key == '2') brush = WATER;
-        if (key == '3') brush = STONE;
-        if (key == '4') brush = FIRE;
+        if (key >= '1' && key <= '0' + NUM_MATERIALS) brush_idx = key - '1';
+
         if (key == 'c' || key == 'C') {
             for (int i = 0; i < gw * gh; i++)
                 if (grid_a[i] != BORDER) grid_a[i] = 0;
@@ -119,11 +162,12 @@ restart: ;
         if (key == KEY_RIGHT_ && cx < gw - 1) cx++;
 
         if (key == ' ') {
+            int brush = sand_ids[brush_idx];
             for (int dy = -2; dy <= 2; dy++)
                 for (int dx = -2; dx <= 2; dx++) {
                     int px = cx+dx, py = cy+dy;
                     if (px >= 0 && px < gw && py >= 0 && py < gh) {
-                        if (brush == STONE || grid_a[py*gw+px] == 0)
+                        if (brush == STONE || brush == BORDER || grid_a[py*gw+px] == 0)
                             grid_a[py*gw+px] = brush;
                     }
                 }
@@ -156,22 +200,21 @@ restart: ;
                 int v = display[y*gw+x];
                 switch (v) {
                     case 0: term_printf(y+1, x+1, 7, 0, " "); break;
-                    case SAND:  term_printf(y+1, x+1, 3, 0, "."); break;
-                    case WATER: term_printf(y+1, x+1, 5, 0, "~"); break;
-                    case STONE: term_printf(y+1, x+1, 4, 0, "#"); break;
-                    case FIRE:  term_printf(y+1, x+1, 2, 1, "*"); break;
+                    case SAND:   term_printf(y+1, x+1, 3, 0, "."); break;
+                    case WATER:  term_printf(y+1, x+1, 5, 0, "~"); break;
+                    case STONE:  term_printf(y+1, x+1, 4, 0, "#"); break;
+                    case FIRE:   term_printf(y+1, x+1, 2, 1, "*"); break;
                     case BORDER: term_printf(y+1, x+1, 4, 1, "="); break;
+                    case LAVA:   term_printf(y+1, x+1, 1, 1, "@"); break;
+                    case ACID:   term_printf(y+1, x+1, 2, 0, "&"); break;
+                    case SMOKE:  term_printf(y+1, x+1, 7, 0, "^"); break;
                 }
             }
 
-        const char *brush_name = "Sand";
-        if (brush == WATER) brush_name = "Water";
-        if (brush == STONE) brush_name = "Stone";
-        if (brush == FIRE) brush_name = "Fire";
-        term_printf(0, 0, 6, 1, " FALLING SAND | Brush: %s | Cursor(%d,%d) | Q=Quit ", brush_name, cx, cy);
-        term_printf(gh+2, 0, 7, 0, " Arrows=Move  Space=Place  1-4=Select  C=Clear  Q=Quit ");
+        term_printf(0, 0, 6, 1, " FALLING SAND | [%d]%s | Cursor(%d,%d) | Q=Quit ",
+                    brush_idx + 1, sand_materials[brush_idx], cx, cy);
+        term_printf(gh+2, 0, 7, 0, " 1=Sand 2=Water 3=Stone 4=Fire 5=Lava 6=Acid 7=Smoke | Arrows=Move Space=Place C=Clear");
 
-        /* Draw cursor */
         if (cy >= 0 && cy < gh && cx >= 0 && cx < gw)
             term_printf(cy+1, cx+1, 3, 1, "+");
 
