@@ -71,6 +71,10 @@ static void platform_sleep_ms(int ms) {
 #ifdef USE_WINCONSOLE
 
 static HANDLE hCon, hConIn;
+#define FB_MAX_W 200
+#define FB_MAX_H 80
+static CHAR_INFO g_fb[FB_MAX_H * FB_MAX_W];
+static int g_fb_w, g_fb_h;
 
 static void term_init(void) {
     hCon = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -79,6 +83,12 @@ static void term_init(void) {
     CONSOLE_CURSOR_INFO ci = {1, FALSE};
     SetConsoleCursorInfo(hCon, &ci);
     SetConsoleMode(hConIn, ENABLE_EXTENDED_FLAGS);
+    CONSOLE_SCREEN_BUFFER_INFO sbi;
+    GetConsoleScreenBufferInfo(hCon, &sbi);
+    g_fb_w = sbi.srWindow.Right - sbi.srWindow.Left + 1;
+    g_fb_h = sbi.srWindow.Bottom - sbi.srWindow.Top + 1;
+    if (g_fb_w > FB_MAX_W) g_fb_w = FB_MAX_W;
+    if (g_fb_h > FB_MAX_H) g_fb_h = FB_MAX_H;
 }
 
 static void term_cleanup(void) {
@@ -103,18 +113,30 @@ static WORD win_attr(int color, int bold) {
     return a;
 }
 
-static void term_goto(int y, int x) {
-    COORD pos = {(SHORT)x, (SHORT)y};
-    SetConsoleCursorPosition(hCon, pos);
+static void term_clear(void) {
+    for (int i = 0; i < g_fb_h * g_fb_w; i++) {
+        g_fb[i].Char.AsciiChar = ' ';
+        g_fb[i].Attributes = win_attr(7, 0);
+    }
+}
+
+static void term_refresh(void) {
+    COORD buf_sz = {(SHORT)g_fb_w, (SHORT)g_fb_h};
+    COORD buf_org = {0, 0};
+    SMALL_RECT rc = {0, 0, (SHORT)(g_fb_w - 1), (SHORT)(g_fb_h - 1)};
+    WriteConsoleOutputA(hCon, g_fb, buf_sz, buf_org, &rc);
 }
 
 static void term_puts(int y, int x, const char *s, int color, int bold) {
-    DWORD written;
-    COORD pos = {(SHORT)x, (SHORT)y};
+    if (y < 0 || y >= g_fb_h) return;
     WORD attr = win_attr(color, bold);
     int len = (int)strlen(s);
-    WriteConsoleOutputCharacterA(hCon, s, len, pos, &written);
-    FillConsoleOutputAttribute(hCon, attr, len, pos, &written);
+    for (int i = 0; i < len && x + i < g_fb_w; i++) {
+        if (x + i < 0) continue;
+        int idx = y * g_fb_w + x + i;
+        g_fb[idx].Char.AsciiChar = s[i];
+        g_fb[idx].Attributes = attr;
+    }
 }
 
 static void term_printf(int y, int x, int color, int bold, const char *fmt, ...) {
@@ -124,10 +146,6 @@ static void term_printf(int y, int x, int color, int bold, const char *fmt, ...)
     vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
     term_puts(y, x, buf, color, bold);
-}
-
-static void term_clear(void) {
-    system("cls");
 }
 
 static int win_read_key(INPUT_RECORD *ir) {

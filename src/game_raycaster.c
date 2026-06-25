@@ -132,11 +132,8 @@ int game_raycaster(gpu_ctx_t *gpu) {
         term_printf(0, 0, 6, 1, " RAYCASTER | Pos(%.1f,%.1f) Angle:%.0f | %dx%d GPU ",
                     px, py, pa*180/3.14159f, gw, gh);
         term_printf(gh+2, 0, 7, 0, " Arrows=Move/Turn  Q=Quit ");
+        term_refresh();
 
-#ifdef USE_WINCONSOLE
-#else
-        refresh();
-#endif
         platform_sleep_ms(30);
     }
 

@@ -103,11 +103,8 @@ int game_mandelbrot(gpu_ctx_t *gpu) {
         term_printf(0, 0, 6, 1, " MANDELBROT | Zoom: %.1fx | Iter: %d | (%.4f, %.4f) ",
                     zoom, max_iter, cx, cy);
         term_printf(gh + 2, 0, 7, 0, " Arrows=Pan +/-=Zoom I=Iter R=Reset Q=Quit | %dx%d GPU ", gw, gh);
+        term_refresh();
 
-#ifdef USE_WINCONSOLE
-#else
-        refresh();
-#endif
         platform_sleep_ms(30);
     }
 

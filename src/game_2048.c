@@ -159,18 +159,11 @@ int game_2048(gpu_ctx_t *gpu) {
             }
 
         term_printf(oy + gh*3 + 1, ox, 7, 0, " Arrows=Slide  R=Restart  Q=Quit ");
-
-#ifdef USE_WINCONSOLE
-#else
-        refresh();
-#endif
+        term_refresh();
 
         if (game_over) {
             term_printf(oy + gh*3/2, ox + gw*3 - 4, 2, 1, " GAME OVER! ");
-#ifdef USE_WINCONSOLE
-#else
-            refresh();
-#endif
+            term_refresh();
             term_wait_key();
             break;
         }

@@ -88,11 +88,8 @@ int game_life(gpu_ctx_t *gpu) {
         term_printf(0, 0, 6, 1, " GAME OF LIFE | Gen: %d | %s | Q=Quit R=Reset Space=Pause ",
                     gen, paused ? "PAUSED" : "RUNNING");
         term_printf(gh + 2, 0, 5, 0, " Grid: %dx%d | %d threads on GPU ", gw, gh, gw * gh);
+        term_refresh();
 
-#ifdef USE_WINCONSOLE
-#else
-        refresh();
-#endif
         platform_sleep_ms(100);
     }
 

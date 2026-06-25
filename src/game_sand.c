@@ -139,12 +139,9 @@ int game_sand(gpu_ctx_t *gpu) {
             if (brush == FIRE) brush_name = "Fire";
             term_printf(0, 0, 6, 1, " FALLING SAND | Brush: %s | 1-4=Select C=Clear Q=Quit ", brush_name);
             term_printf(gh+2, 0, 7, 0, " 1=Sand 2=Water 3=Stone 4=Fire  Space=Place  C=Clear ");
+            term_refresh();
         }
 
-#ifdef USE_WINCONSOLE
-#else
-        refresh();
-#endif
         platform_sleep_ms(50);
     }
 

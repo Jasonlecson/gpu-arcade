@@ -164,21 +164,15 @@ int game_tetris(gpu_ctx_t *gpu) {
         term_printf(oy + 7, ox + TET_W * 2 + 2, 4, 0, "Level: %d", level);
         term_printf(oy + 8, ox + TET_W * 2 + 2, 4, 0, "Lines: %d", lines_cleared);
         term_printf(sh - 1, 0, 7, 0, " Arrows=Move Up=Rotate Q=Quit ");
+        term_refresh();
 
-#ifdef USE_WINCONSOLE
-#else
-        refresh();
-#endif
         platform_sleep_ms(50);
     }
 
     if (game_over) {
         term_printf(oy + TET_H/2, ox + TET_W - 4, 2, 1, " GAME OVER! ");
         term_printf(oy + TET_H/2 + 1, ox + TET_W - 6, 4, 0, " Score: %d ", score);
-#ifdef USE_WINCONSOLE
-#else
-        refresh();
-#endif
+        term_refresh();
             term_wait_key();
     }
 

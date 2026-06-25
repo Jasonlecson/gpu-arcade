@@ -81,20 +81,14 @@ int game_pong(gpu_ctx_t *gpu) {
 
         term_printf(0, 0, 6, 1, " PONG | %d : %d | You=Left  AI=Right | Q=Quit ", (int)state[6], (int)state[7]);
         term_printf(sh - 1, 0, 7, 0, " Up/Down=Move Paddle ");
+        term_refresh();
 
-#ifdef USE_WINCONSOLE
-#else
-        refresh();
-#endif
         platform_sleep_ms(30);
 
         if ((int)state[6] >= 11 || (int)state[7] >= 11) {
             int winner = (int)state[6] >= 11 ? 1 : 2;
             term_printf(gh/2, gw/2 - 5, 3, 1, " PLAYER %d WINS! ", winner);
-#ifdef USE_WINCONSOLE
-#else
-            refresh();
-#endif
+            term_refresh();
             term_wait_key();
             break;
         }

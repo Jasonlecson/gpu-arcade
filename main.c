@@ -91,12 +91,7 @@ static int menu(gpu_ctx_t *gpu) {
 
         /* Version */
         term_printf(sh - 1, 0, 7, 0, " GPU Arcade v1.0 | github.com/Jasonlecson/gpu-arcade ");
-
-#ifdef USE_WINCONSOLE
-        /* flush handled per-line */
-#else
-        refresh();
-#endif
+        term_refresh();
 
         int key = read_key();
         if (key == KEY_UP_ && selected > 0) selected--;

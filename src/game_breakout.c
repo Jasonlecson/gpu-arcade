@@ -93,19 +93,12 @@ int game_breakout(gpu_ctx_t *gpu) {
 
         term_printf(0, 0, 6, 1, " BREAKOUT | Score: %d | Q=Quit ", (int)state[6]);
         term_printf(sh - 1, 0, 7, 0, " Left/Right=Move Paddle ");
-
-#ifdef USE_WINCONSOLE
-#else
-        refresh();
-#endif
+        term_refresh();
 
         if (state[5] > 0.5f) {
             term_printf(gh/2, gw/2 - 4, 2, 1, " GAME OVER! ");
             term_printf(gh/2 + 1, gw/2 - 6, 4, 0, " Score: %d ", (int)state[6]);
-#ifdef USE_WINCONSOLE
-#else
-            refresh();
-#endif
+            term_refresh();
             term_wait_key();
             break;
         }
@@ -114,10 +107,7 @@ int game_breakout(gpu_ctx_t *gpu) {
         for (int i = 0; i < bw * bh; i++) if (bricks[i] > 0) remaining++;
         if (remaining == 0) {
             term_printf(gh/2, gw/2 - 3, 3, 1, " YOU WIN! ");
-#ifdef USE_WINCONSOLE
-#else
-            refresh();
-#endif
+            term_refresh();
             term_wait_key();
             break;
         }

@@ -136,19 +136,12 @@ int game_snake(gpu_ctx_t *gpu) {
         }
         term_printf(0, 0, 6, 1, " SNAKE | Score:%d Length:%d | GPU:%.0f us | Q=Quit ", len[0]-4, len[0], (pe-pt)/1e3);
         term_printf(gh + 2, 0, 7, 0, " Arrows=Move  Q=Back to Menu | %d FPS ", (int)(fc / elapsed));
-
-#ifdef USE_WINCONSOLE
-#else
-        refresh();
-#endif
+        term_refresh();
 
         if (status[0] == 2) {
             term_printf(gh/2, gw/2 - 4, 2, 1, " GAME OVER! ");
             term_printf(gh/2 + 1, gw/2 - 7, 4, 0, " Press any key ");
-#ifdef USE_WINCONSOLE
-#else
-            refresh();
-#endif
+            term_refresh();
             term_wait_key();
             break;
         }
