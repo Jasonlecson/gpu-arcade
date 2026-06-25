@@ -137,6 +137,7 @@ restart: ;
     double next_logic = now_us();
     int fc = 0;
     double sess = now_us();
+    int space_held = 0;
 
     while (1) {
         term_size_t ts = check_resize(&prev_w, &prev_h);
@@ -145,6 +146,7 @@ restart: ;
         int key = read_key();
         if (key == 'q' || key == 'Q' || key == 27) break;
         if (key >= '1' && key <= '0' + NUM_MATERIALS) brush_idx = key - '1';
+        if (key == ' ') space_held = 1;
 
         if (key == 'c' || key == 'C') {
             for (int i = 0; i < gw * gh; i++)
@@ -161,7 +163,8 @@ restart: ;
         if (key == KEY_LEFT_ && cx > 0) cx--;
         if (key == KEY_RIGHT_ && cx < gw - 1) cx++;
 
-        if (key == ' ') {
+        if (space_held) {
+            space_held = 0;
             int brush = sand_ids[brush_idx];
             for (int dy = -2; dy <= 2; dy++)
                 for (int dx = -2; dx <= 2; dx++) {
