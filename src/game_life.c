@@ -27,9 +27,13 @@ static const char *life_kernel_src =
 "}\n";
 
 int game_life(gpu_ctx_t *gpu) {
+    int prev_w = 0, prev_h = 0;
+
+restart: ;
     int sw, sh;
     get_terminal_size(&sw, &sh);
-    int gw = sw - 2, gh = sh - 4;
+    prev_w = sw; prev_h = sh;
+    int gw = sw - 2, gh = sh - 6;
     if (gw < 10) gw = 10;
     if (gh < 5) gh = 5;
 
@@ -51,6 +55,8 @@ int game_life(gpu_ctx_t *gpu) {
     double sess = now_us();
 
     while (1) {
+        term_size_t ts = check_resize(&prev_w, &prev_h);
+        if (ts.changed) goto cleanup_restart;
         int key = read_key();
         if (key == 'q' || key == 'Q' || key == 27) break;
         if (key == ' ') paused = !paused;
@@ -105,4 +111,10 @@ int game_life(gpu_ctx_t *gpu) {
     clReleaseMemObject(ga); clReleaseMemObject(gb);
     free(grid_a); free(grid_b);
     return 0;
+
+cleanup_restart:
+    clReleaseKernel(kern); clReleaseProgram(prog);
+    clReleaseMemObject(ga); clReleaseMemObject(gb);
+    free(grid_a); free(grid_b);
+    goto restart;
 }

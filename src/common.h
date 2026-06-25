@@ -388,4 +388,20 @@ static void draw_metrics(gpu_ctx_t *gpu, int gh, int frame_count, double session
         term_printf(my++, 0, 5, 0, "  Kernel: %.0f us  GPU threads: active", kernel_us);
 }
 
+/* ======================== Terminal resize detection ======================== */
+
+typedef struct { int w, h, changed; } term_size_t;
+
+static term_size_t check_resize(int *prev_w, int *prev_h) {
+    int sw, sh;
+    get_terminal_size(&sw, &sh);
+    term_size_t ts = {sw, sh, 0};
+    if (sw != *prev_w || sh != *prev_h) {
+        *prev_w = sw;
+        *prev_h = sh;
+        ts.changed = 1;
+    }
+    return ts;
+}
+
 #endif /* GPU_ARCADE_COMMON_H */

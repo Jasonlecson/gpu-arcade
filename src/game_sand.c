@@ -50,9 +50,13 @@ static const char *sand_kernel_src =
 "}\n";
 
 int game_sand(gpu_ctx_t *gpu) {
+    int prev_w = 0, prev_h = 0;
+
+restart: ;
     int sw, sh;
     get_terminal_size(&sw, &sh);
-    int gw = sw - 2, gh = sh - 4;
+    prev_w = sw; prev_h = sh;
+    int gw = sw - 2, gh = sh - 6;
     if (gw < 10) gw = 10;
     if (gh < 5) gh = 5;
 
@@ -62,8 +66,10 @@ int game_sand(gpu_ctx_t *gpu) {
     for (int i = 0; i < gw * gh; i++) rng[i] = rand();
 
     for (int x = gw/4; x < gw*3/4; x++) {
-        grid_a[gh*2/3 * gw + x] = STONE;
-        grid_a[gh/3 * gw + x] = STONE;
+        grid_a[(gh*2/3) * gw + x] = STONE;
+    }
+    for (int x = gw/5; x < gw*4/5; x++) {
+        grid_a[(gh/3) * gw + x] = STONE;
     }
 
     int brush = SAND, use_a = 1;
@@ -82,6 +88,9 @@ int game_sand(gpu_ctx_t *gpu) {
     double sess = now_us();
 
     while (1) {
+        term_size_t ts = check_resize(&prev_w, &prev_h);
+        if (ts.changed) goto cleanup_restart;
+
         int key = read_key();
         if (key == 'q' || key == 'Q' || key == 27) break;
         if (key == '1') brush = SAND;
@@ -89,8 +98,10 @@ int game_sand(gpu_ctx_t *gpu) {
         if (key == '3') brush = STONE;
         if (key == '4') brush = FIRE;
         if (key == 'c' || key == 'C') {
-            memset(grid_a, 0, gw*gh*sizeof(int));
-            memset(grid_b, 0, gw*gh*sizeof(int));
+            for (int i = 0; i < gw * gh; i++)
+                if (grid_a[i] != STONE) grid_a[i] = 0;
+            for (int i = 0; i < gw * gh; i++)
+                if (grid_b[i] != STONE) grid_b[i] = 0;
             clEnqueueWriteBuffer(gpu->queue, ga, CL_TRUE, 0, gw*gh*sizeof(int), grid_a, 0, NULL, NULL);
             clEnqueueWriteBuffer(gpu->queue, gb, CL_TRUE, 0, gw*gh*sizeof(int), grid_b, 0, NULL, NULL);
         }
@@ -166,4 +177,10 @@ int game_sand(gpu_ctx_t *gpu) {
     clReleaseMemObject(ga); clReleaseMemObject(gb); clReleaseMemObject(rg);
     free(grid_a); free(grid_b); free(rng);
     return 0;
+
+cleanup_restart:
+    clReleaseKernel(kern); clReleaseProgram(prog);
+    clReleaseMemObject(ga); clReleaseMemObject(gb); clReleaseMemObject(rg);
+    free(grid_a); free(grid_b); free(rng);
+    goto restart;
 }

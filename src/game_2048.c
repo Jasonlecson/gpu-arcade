@@ -133,8 +133,12 @@ static void render_2048(int *grid, int gw, int gh, int ox, int oy, int score, in
 }
 
 int game_2048(gpu_ctx_t *gpu) {
+    int prev_w = 0, prev_h = 0;
+
+restart: ;
     int sw, sh;
     get_terminal_size(&sw, &sh);
+    prev_w = sw; prev_h = sh;
     int gw = 4, gh = 4;
     int ox = (sw - gw * 6) / 2;
     int oy = (sh - gh * 3) / 2;
@@ -156,6 +160,9 @@ int game_2048(gpu_ctx_t *gpu) {
     render_2048(grid, gw, gh, ox, oy, score, game_over, gpu, grid_g, res_g, kern, fc, sess);
 
     while (1) {
+        term_size_t ts = check_resize(&prev_w, &prev_h);
+        if (ts.changed) { ox = (prev_w - gw * 6) / 2; oy = (prev_h - gh * 3) / 2; render_2048(grid, gw, gh, ox, oy, score, game_over, gpu, grid_g, res_g, kern, fc, sess); }
+
         int key = read_key();
         if (key == 'q' || key == 'Q' || key == 27) break;
         if (key == 'r' || key == 'R') {

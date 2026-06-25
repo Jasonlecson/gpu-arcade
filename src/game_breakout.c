@@ -37,9 +37,13 @@ static const char *breakout_kernel_src =
 "}\n";
 
 int game_breakout(gpu_ctx_t *gpu) {
+    int prev_w = 0, prev_h = 0;
+
+restart: ;
     int sw, sh;
     get_terminal_size(&sw, &sh);
-    int gw = sw - 2, gh = sh - 4;
+    prev_w = sw; prev_h = sh;
+    int gw = sw - 2, gh = sh - 6;
     if (gw < 20) gw = 20;
     if (gh < 15) gh = 15;
     int bw = gw, bh = gh / 3;
@@ -63,6 +67,9 @@ int game_breakout(gpu_ctx_t *gpu) {
     double sess = now_us();
 
     while (1) {
+        term_size_t ts = check_resize(&prev_w, &prev_h);
+        if (ts.changed) goto cleanup_restart;
+
         int key = read_key();
         if (key == 'q' || key == 'Q' || key == 27) break;
         if (key == KEY_LEFT_ && state[7] > 0) state[7] -= 2.0f;
@@ -157,4 +164,10 @@ breakout_exit:
     clReleaseMemObject(bk_g); clReleaseMemObject(st_g);
     free(bricks);
     return 0;
+
+cleanup_restart:
+    clReleaseKernel(kern); clReleaseProgram(prog);
+    clReleaseMemObject(bk_g); clReleaseMemObject(st_g);
+    free(bricks);
+    goto restart;
 }

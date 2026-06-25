@@ -32,8 +32,12 @@ static const int tet_shapes[7][4][4][2] = {
 static const int tet_colors[7] = {5, 3, 1, 2, 6, 2, 3};
 
 int game_tetris(gpu_ctx_t *gpu) {
+    int prev_w = 0, prev_h = 0;
+
+restart: ;
     int sw, sh;
     get_terminal_size(&sw, &sh);
+    prev_w = sw; prev_h = sh;
     int ox = (sw - TET_W * 2) / 2;
     int oy = (sh - TET_H) / 2;
 
@@ -55,6 +59,9 @@ int game_tetris(gpu_ctx_t *gpu) {
     double sess = now_us();
 
     while (!game_over) {
+        term_size_t ts = check_resize(&prev_w, &prev_h);
+        if (ts.changed) { ox = (prev_w - TET_W * 2) / 2; oy = (prev_h - TET_H) / 2; }
+
         int key = read_key();
         if (key == 'q' || key == 'Q' || key == 27) break;
 

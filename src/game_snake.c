@@ -1,6 +1,6 @@
 /*
  * Snake - Classic snake game, all logic on GPU
- * Logic: 80ms per step | Render: 60 FPS
+ * Logic: 120ms per step | Render: 60 FPS
  */
 
 #include "src/common.h"
@@ -52,9 +52,13 @@ static const char *snake_kernel_src =
 "}\n";
 
 int game_snake(gpu_ctx_t *gpu) {
+    int prev_w = 0, prev_h = 0;
+
+restart: ;
     int sw, sh;
     get_terminal_size(&sw, &sh);
-    int gw = sw - 2, gh = sh - 6;
+    prev_w = sw; prev_h = sh;
+    int gw = sw - 2, gh = sh - 8;
     if (gw < 10) gw = 10;
     if (gh < 5) gh = 5;
 
@@ -89,6 +93,9 @@ int game_snake(gpu_ctx_t *gpu) {
     double kernel_us = 0;
 
     while (1) {
+        term_size_t ts = check_resize(&prev_w, &prev_h);
+        if (ts.changed) goto cleanup_restart;
+
         int key = read_key();
         if (key == 'q' || key == 'Q' || key == 27) break;
         if (key == KEY_UP_ && dir[0] != 1) dir[0] = 0;
@@ -152,41 +159,31 @@ int game_snake(gpu_ctx_t *gpu) {
             term_printf(gh/2 + 1, gw/2 - 10, 4, 0, " R=Restart  Q=Quit to Menu ");
             term_refresh();
             while (1) {
+                term_size_t ts2 = check_resize(&prev_w, &prev_h);
+                if (ts2.changed) goto cleanup_restart;
                 int k = read_key();
                 if (k == 'q' || k == 'Q' || k == 27) goto snake_exit;
-                if (k == 'r' || k == 'R') {
-                    memset(grid, 0, gw*gh*sizeof(int));
-                    for (int i = 0; i < 4 && sx - i >= 0; i++)
-                        grid[sy * gw + (sx - i)] = i + 1;
-                    head[0] = sy; head[1] = sx; dir[0] = 3; len[0] = 4; status[0] = 0;
-                    for (int f = 0; f < SNAKE_FOOD; f++) {
-                        int fy, fx, tries = 0;
-                        do { fy = rand() % gh; fx = rand() % gw; tries++; }
-                        while (grid[fy * gw + fx] != 0 && tries < 1000);
-                        if (grid[fy * gw + fx] == 0) grid[fy * gw + fx] = -1;
-                    }
-                    clEnqueueWriteBuffer(gpu->queue, grid_g, CL_TRUE, 0, gw*gh*sizeof(int), grid, 0, NULL, NULL);
-                    clEnqueueWriteBuffer(gpu->queue, head_g, CL_TRUE, 0, 2*sizeof(int), head, 0, NULL, NULL);
-                    clEnqueueWriteBuffer(gpu->queue, dir_g, CL_TRUE, 0, sizeof(int), dir, 0, NULL, NULL);
-                    clEnqueueWriteBuffer(gpu->queue, len_g, CL_TRUE, 0, sizeof(int), len, 0, NULL, NULL);
-                    clEnqueueWriteBuffer(gpu->queue, st_g, CL_TRUE, 0, sizeof(int), status, 0, NULL, NULL);
-                    fc = 0; sess = now_us(); next_logic = now_us();
-                    break;
-                }
+                if (k == 'r' || k == 'R') goto cleanup_restart;
                 platform_sleep_ms(16);
             }
-            if (status[0] == 2) break;
         }
 
         platform_sleep_ms(16);
     }
 
 snake_exit:
-    clReleaseKernel(kern);
-    clReleaseProgram(prog);
+    clReleaseKernel(kern); clReleaseProgram(prog);
     clReleaseMemObject(grid_g); clReleaseMemObject(head_g);
     clReleaseMemObject(dir_g); clReleaseMemObject(len_g);
     clReleaseMemObject(st_g); clReleaseMemObject(rng_g);
     free(grid);
     return 0;
+
+cleanup_restart:
+    clReleaseKernel(kern); clReleaseProgram(prog);
+    clReleaseMemObject(grid_g); clReleaseMemObject(head_g);
+    clReleaseMemObject(dir_g); clReleaseMemObject(len_g);
+    clReleaseMemObject(st_g); clReleaseMemObject(rng_g);
+    free(grid);
+    goto restart;
 }
