@@ -130,6 +130,19 @@ static void term_clear(void) {
     system("cls");
 }
 
+static int win_read_key(INPUT_RECORD *ir) {
+    int vk = ir->Event.KeyEvent.wVirtualKeyCode;
+    switch (vk) {
+        case VK_UP:    return 256 + 1;
+        case VK_DOWN:  return 256 + 2;
+        case VK_LEFT:  return 256 + 3;
+        case VK_RIGHT: return 256 + 4;
+        case VK_RETURN: return '\n';
+        case VK_ESCAPE: return 27;
+        default: return ir->Event.KeyEvent.uChar.AsciiChar;
+    }
+}
+
 static int term_getch(void) {
     INPUT_RECORD ir;
     DWORD n;
@@ -137,17 +150,20 @@ static int term_getch(void) {
         if (!ReadConsoleInput(hConIn, &ir, 1, &n)) continue;
         if (ir.EventType != KEY_EVENT) continue;
         if (!ir.Event.KeyEvent.bKeyDown) continue;
-        int vk = ir.Event.KeyEvent.wVirtualKeyCode;
-        switch (vk) {
-            case VK_UP:    return 256 + 1;
-            case VK_DOWN:  return 256 + 2;
-            case VK_LEFT:  return 256 + 3;
-            case VK_RIGHT: return 256 + 4;
-            case VK_RETURN: return '\n';
-            case VK_ESCAPE: return 27;
-            default: return ir.Event.KeyEvent.uChar.AsciiChar;
-        }
+        return win_read_key(&ir);
     }
+}
+
+static int term_getch_nb(void) {
+    INPUT_RECORD ir;
+    DWORD n;
+    if (WaitForSingleObject(hConIn, 0) != WAIT_OBJECT_0) return -1;
+    while (PeekConsoleInput(hConIn, &ir, 1, &n) && n > 0) {
+        ReadConsoleInput(hConIn, &ir, 1, &n);
+        if (ir.EventType == KEY_EVENT && ir.Event.KeyEvent.bKeyDown)
+            return win_read_key(&ir);
+    }
+    return -1;
 }
 
 static int term_kbhit(void) {
@@ -314,10 +330,11 @@ static void gpu_free(gpu_ctx_t *g) {
 #define KEY_RIGHT_ 260
 
 static int read_key(void) {
-    int ch = term_getch();
 #ifdef USE_WINCONSOLE
-    return ch; /* already translated */
+    int ch = term_getch_nb();
+    return ch; /* -1 if no key, already translated otherwise */
 #else
+    int ch = term_getch();
     switch (ch) {
         case KEY_UP:    return KEY_UP_;
         case KEY_DOWN:  return KEY_DOWN_;
