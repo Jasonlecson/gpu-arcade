@@ -71,9 +71,7 @@ static void platform_sleep_ms(int ms) {
 #ifdef USE_WINCONSOLE
 
 static HANDLE hCon, hConIn;
-#define FB_MAX_W 200
-#define FB_MAX_H 80
-static CHAR_INFO g_fb[FB_MAX_H * FB_MAX_W];
+static CHAR_INFO *g_fb;
 static int g_fb_w, g_fb_h;
 
 static void term_init(void) {
@@ -86,11 +84,11 @@ static void term_init(void) {
     GetConsoleScreenBufferInfo(hCon, &sbi);
     g_fb_w = sbi.srWindow.Right - sbi.srWindow.Left + 1;
     g_fb_h = sbi.srWindow.Bottom - sbi.srWindow.Top + 1;
-    if (g_fb_w > FB_MAX_W) g_fb_w = FB_MAX_W;
-    if (g_fb_h > FB_MAX_H) g_fb_h = FB_MAX_H;
+    g_fb = malloc(g_fb_w * g_fb_h * sizeof(CHAR_INFO));
 }
 
 static void term_cleanup(void) {
+    free(g_fb);
     CONSOLE_CURSOR_INFO ci = {1, TRUE};
     SetConsoleCursorInfo(hCon, &ci);
     system("cls");
@@ -113,9 +111,14 @@ static WORD win_attr(int color, int bold) {
 }
 
 static void term_clear(void) {
+    CONSOLE_SCREEN_BUFFER_INFO sbi;
+    GetConsoleScreenBufferInfo(hCon, &sbi);
+    g_fb_w = sbi.srWindow.Right - sbi.srWindow.Left + 1;
+    g_fb_h = sbi.srWindow.Bottom - sbi.srWindow.Top + 1;
+    g_fb = realloc(g_fb, g_fb_w * g_fb_h * sizeof(CHAR_INFO));
     for (int i = 0; i < g_fb_h * g_fb_w; i++) {
-        g_fb[i].Char.AsciiChar = ' ';
-        g_fb[i].Attributes = win_attr(7, 0);
+        g_fb[i].Char.UnicodeChar = ' ';
+        g_fb[i].Attributes = 0;
     }
 }
 
@@ -123,7 +126,7 @@ static void term_refresh(void) {
     COORD buf_sz = {(SHORT)g_fb_w, (SHORT)g_fb_h};
     COORD buf_org = {0, 0};
     SMALL_RECT rc = {0, 0, (SHORT)(g_fb_w - 1), (SHORT)(g_fb_h - 1)};
-    WriteConsoleOutputA(hCon, g_fb, buf_sz, buf_org, &rc);
+    WriteConsoleOutputW(hCon, g_fb, buf_sz, buf_org, &rc);
 }
 
 static void term_puts(int y, int x, const char *s, int color, int bold) {
@@ -133,7 +136,7 @@ static void term_puts(int y, int x, const char *s, int color, int bold) {
     for (int i = 0; i < len && x + i < g_fb_w; i++) {
         if (x + i < 0) continue;
         int idx = y * g_fb_w + x + i;
-        g_fb[idx].Char.AsciiChar = s[i];
+        g_fb[idx].Char.UnicodeChar = s[i];
         g_fb[idx].Attributes = attr;
     }
 }
