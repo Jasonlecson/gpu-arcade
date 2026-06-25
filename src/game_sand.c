@@ -9,6 +9,7 @@
 #define WATER 2
 #define STONE 3
 #define FIRE 4
+#define BORDER 5
 #define SAND_LOGIC_MS 40
 
 static const char *sand_kernel_src =
@@ -22,7 +23,7 @@ static const char *sand_kernel_src =
 "    int id = y * W + x;\n"
 "    int v = in[id];\n"
 "    out[id] = v;\n"
-"    if (v == 0 || v == 3) return;\n"
+"    if (v == 0 || v == 3 || v == 5) return;\n"
 "    int seed = rng[id];\n"
 "    int r = (seed * 1103515245 + 12345) & 0x7fffffff;\n"
 "    rng[id] = r;\n"
@@ -65,6 +66,11 @@ restart: ;
     int *rng = malloc(gw * gh * sizeof(int));
     for (int i = 0; i < gw * gh; i++) rng[i] = rand();
 
+    for (int x = 0; x < gw; x++) {
+        grid_a[x] = BORDER;
+        grid_a[(gh - 1) * gw + x] = BORDER;
+    }
+
     for (int x = gw/4; x < gw*3/4; x++) {
         grid_a[(gh*2/3) * gw + x] = STONE;
     }
@@ -99,9 +105,9 @@ restart: ;
         if (key == '4') brush = FIRE;
         if (key == 'c' || key == 'C') {
             for (int i = 0; i < gw * gh; i++)
-                if (grid_a[i] != STONE) grid_a[i] = 0;
+                if (grid_a[i] != BORDER) grid_a[i] = 0;
             for (int i = 0; i < gw * gh; i++)
-                if (grid_b[i] != STONE) grid_b[i] = 0;
+                if (grid_b[i] != BORDER) grid_b[i] = 0;
             clEnqueueWriteBuffer(gpu->queue, ga, CL_TRUE, 0, gw*gh*sizeof(int), grid_a, 0, NULL, NULL);
             clEnqueueWriteBuffer(gpu->queue, gb, CL_TRUE, 0, gw*gh*sizeof(int), grid_b, 0, NULL, NULL);
             display = use_a ? grid_a : grid_b;
@@ -154,6 +160,7 @@ restart: ;
                     case WATER: term_printf(y+1, x+1, 5, 0, "~"); break;
                     case STONE: term_printf(y+1, x+1, 4, 0, "#"); break;
                     case FIRE:  term_printf(y+1, x+1, 2, 1, "*"); break;
+                    case BORDER: term_printf(y+1, x+1, 4, 1, "="); break;
                 }
             }
 
